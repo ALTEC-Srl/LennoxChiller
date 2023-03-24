@@ -4,6 +4,9 @@
 #include <string>
 #include <msclr\marshal_cppstd.h>
 #include "rapidjson\document.h"     // rapidjson's DOM-style API
+#include "rapidjson\rapidjson.h"
+#include "rapidjson\stringbuffer.h"
+#include "rapidjson\writer.h"
 
 
 // Metodi per EBM 
@@ -21,12 +24,23 @@ using namespace msclr::interop;
 using namespace rapidjson;
 
 namespace LennoxChiller {
-	public ref class CalculateFan
+	public ref class Chiller
 	{
 	public:
-		int GetFanPerformance(String^ jSONIN);
+		String^ GetModelPerformance(String^ jSONIN);
+		String^ GetWaterCoilPerformance(String^ jSONIN);
+		String^ GetFanPerformance(String^ jSONIN);
+		String^ GetNoiseData(String^ jSONIN);
+		String^ GetNoiseData1(String^ jSONIN);
+		String^ GetOptionsPressureDrop(String^ jSONIN);
+		String^ GetDrawing(String^ jSONIN);
+		String^ GetBIMModel(String^ jSONIN);
+
 	private:
 		bool LoadEBMDll();
-
+		short GetSFPClass(double sfp);
+		//recupero le informazioni nel database interno LENNOX in base all'idmodello richiesto
+		//ritorna un json creato con i dati di ritorno del recordset	
+		String^ SearchModel(int model);
 	};
 }

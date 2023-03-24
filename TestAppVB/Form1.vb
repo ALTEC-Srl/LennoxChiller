@@ -6,9 +6,9 @@ Public Class Form1
         Dim output As String
 
 
-        Input = "{""MODELID"": 1,""SUPPLIERID"": 1, ""airflow"": 3600, ""fantypeoption"": 10, ""totaloptionpressuredrop"": 100}"
-        Dim fan As New LennoxChiller.CalculateFan()
-        output = fan.GetFanPerformance(Input)
+        Input = "{""MODELID"": 1,""SUPPLIERID"": 1, ""airflow"": 1, ""fantypeoption"": 10, ""totaloptionpressuredrop"": 200, ""density"": 1.2, ""temperature"": 20}"
+        Dim chiller As New LennoxChiller.Chiller()
+        output = chiller.GetFanPerformance(Input)
         MsgBox(output)
 
     End Sub
