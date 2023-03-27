@@ -23,8 +23,32 @@ using namespace System;
 using namespace msclr::interop;
 using namespace rapidjson;
 
-namespace LennoxChiller {
-	public ref class Chiller
+namespace LennoxRooftop {
+
+	class CModelAccessor : public CADORecordBinding {
+		BEGIN_ADO_BINDING(CModelAccessor)
+
+			// Column fname is the 2nd field in the table     
+			ADO_VARIABLE_LENGTH_ENTRY2(3, adVarChar, m_Nomecomm,
+				sizeof(m_Nomecomm), m_NomecommStatus, FALSE)
+
+			/*/ Column lname is the 4th field in the table.  
+			ADO_VARIABLE_LENGTH_ENTRY2(4, adVarChar, m_sze_lname,
+				sizeof(m_sze_lname), le_lnameStatus, FALSE)
+
+			// Column hiredate is the 8th field in the table.  
+			ADO_VARIABLE_LENGTH_ENTRY2(8, adDBDate, m_sze_hiredate,
+				sizeof(m_sze_hiredate), le_hiredateStatus, TRUE)
+				*/
+			END_ADO_BINDING()
+
+	public:
+		CHAR   m_Nomecomm[255];
+		ULONG   m_NomecommStatus;
+		
+	};
+
+	public ref class Rooftop
 	{
 	public:
 		String^ GetModelPerformance(String^ jSONIN);
@@ -43,4 +67,6 @@ namespace LennoxChiller {
 		//ritorna un json creato con i dati di ritorno del recordset	
 		String^ SearchModel(int model);
 	};
+	///////////////////////////////////////////////////////////////////////////
+
 }

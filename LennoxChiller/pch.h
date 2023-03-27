@@ -8,5 +8,29 @@
 #define PCH_H
 
 // aggiungere qui le intestazioni da precompilare
+//#include <adoid.h>
+#include <adoint.h>
+#include "..\msadox.tlh"
+#include <oledb.h> 
+#include "icrsint.h"  
+constexpr long lenRis = 40000;
+
+#define SAFE_DELETE(x)			{ if((x)){delete (x); (x)=NULL;} }  
+#define SAFE_ARRAY_DELETE(x)	{ if((x)){delete[] (x); (x)=NULL;} }
+
+#define THROW_ERR(exp)	if (FAILED(hr = (exp))) throw hr
+
+static const GUID CONGUID =
+{ 0x0000514, 0, 0x10, 0x80,0,0,0xAA,0,0x6D,0x2E,0xA4 };
+
+static const GUID CONINTGUID =
+{ 0x0000550, 0, 0x10, 0x80,0,0,0xAA,0,0x6D,0x2E,0xA4 };
+
+static const GUID RECGUID =
+{ 0x0000535, 0, 0x10, 0x80,0,0,0xAA,0,0x6D,0x2E,0xA4 };
+
+static const GUID RECINTGUID =
+{ 0x000054F, 0, 0x10, 0x80,0,0,0xAA,0,0x6D,0x2E,0xA4 };
+
 
 #endif //PCH_H

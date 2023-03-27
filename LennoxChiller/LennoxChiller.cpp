@@ -22,11 +22,8 @@ PEBMPAPSTFAN_FNCT2	GET_DLL_VERSION = NULL;
 PEBMPAPSTFAN_FNCT1  SET_XML_PATH = NULL;
 PEBMPAPSTFAN_FNCT20 SET_XML_PATH_WS = NULL;
 
-using namespace LennoxChiller;
-constexpr long lenRis = 40000;
+using namespace LennoxRooftop;
 
-#define SAFE_DELETE(x)			{ if((x)){delete (x); (x)=NULL;} }
-#define SAFE_ARRAY_DELETE(x)	{ if((x)){delete[] (x); (x)=NULL;} }
 
 CString ExtractString(const CString& str, int* pos, const CString& c2seek = _T(";"), const CString& start = _T(""))
 {
@@ -57,7 +54,8 @@ CString ExtractString(const CString& str, int* pos, const CString& c2seek = _T("
 	return ris;
 };
 
-String^ Chiller::GetFanPerformance(String^ jSONIN)
+
+String^ Rooftop::GetFanPerformance(String^ jSONIN)
 {
     std::string str = marshal_as<std::string>(jSONIN);
 
@@ -287,56 +285,147 @@ String^ Chiller::GetFanPerformance(String^ jSONIN)
 		JSONout = gcnew String(s.GetString());
     return  JSONout;
 }
-String^ Chiller::GetModelPerformance(String^ jSONIN)
+String^ Rooftop::GetModelPerformance(String^ jSONIN)
 {
 	String^ err;
 	return  err;
 } 
 
-String^ Chiller::GetWaterCoilPerformance(String^ jSONIN)
+String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 {
 	String^ err;
 	return  err;
 }
-String^ Chiller::GetNoiseData(String^ jSONIN) 
+String^ Rooftop::GetNoiseData(String^ jSONIN) 
 {
 	String^ err;
 	return  err;
 }
-String^ Chiller::GetNoiseData1(String^ jSONIN) 
+String^ Rooftop::GetNoiseData1(String^ jSONIN) 
 {
 	String^ err;
 	return  err;
 }
-String^ Chiller::GetOptionsPressureDrop(String^ jSONIN) 
+String^ Rooftop::GetOptionsPressureDrop(String^ jSONIN) 
 {
 	String^ err;
 	return  err;
 }
-String^ Chiller::GetDrawing(String^ jSONIN) 
+String^ Rooftop::GetDrawing(String^ jSONIN) 
 {
 	String^ err;
 	return  err;
 }
-String^ Chiller::GetBIMModel(String^ jSONIN) 
+String^ Rooftop::GetBIMModel(String^ jSONIN) 
 {
 	String^ err;
 	return  err;
 }
 
-String^ Chiller::SearchModel(int model)
+String^ Rooftop::SearchModel(int model)
 {
+	HRESULT		hr, hr1;
+	CString varUserId = _T("");
+	CString varPwd = _T("");
+	CString strConn = _T("File Name=elencal.UDL;");
+	ADORecordset* pModelRs = NULL;
+	ADOConnection* pConn = NULL;
+	CModelAccessor modelAccessor;
+	IADORecordBinding* picRs = NULL;   // Interface Pointer declared.  
+
+	try
+	{ 
+		CoCreateInstance(CONGUID, NULL, CLSCTX_INPROC_SERVER, CONINTGUID, (LPVOID*)&pConn);
+		hr = pConn->Open(strConn.AllocSysString(), varUserId.AllocSysString(), varPwd.AllocSysString(), adOpenUnspecified);
+	} 
+	catch (HRESULT hr)
+	{
+		//if (pConn)
+		//	pConn->Release();
+		//AfxMessageBox(_T("Errore in apertura connessione a SQL SERVER. Verificare la correttezza del file GESTIONECTA.UDL"));
+		//DisplayOLEDBErrorRecords(hr);
+		//return false;
+	} 
+	_variant_t vNull;
+	CoCreateInstance(RECGUID, NULL, CLSCTX_INPROC_SERVER, RECINTGUID, (LPVOID*)&pModelRs);
+
+	CString strFmt = _T("RT2_B6_altec_definition");
+	hr = pModelRs->put_Source(strFmt.AllocSysString());
+	hr = pModelRs->Open((_variant_t)strFmt.AllocSysString(), _variant_t((IDispatch*)pConn, true),
+		adOpenStatic, adLockReadOnly, adCmdTable);
+	hr = pModelRs->QueryInterface(__uuidof(IADORecordBinding), (LPVOID*)&picRs);
+	hr = picRs->BindToRecordset(&modelAccessor);
+	
+	picRs->Release();
+	HRESULT hrpr = pModelRs->MoveFirst();
+	VARIANT_BOOL vbEOF;
+	pModelRs->get_EOF(&vbEOF);
+	
+	while (!vbEOF)
+	{
+		pModelRs->MoveNext();
+		
+		CString test = modelAccessor.m_Nomecomm;
+		
+		pModelRs->get_EOF(&vbEOF);
+	}
+	pModelRs->Close();
+
+	/*CComPtr<ADORecordset> przRsAcc;
+		//CModel m_ModelAcc;
+		CoCreateInstance(RECGUID, NULL, CLSCTX_INPROC_SERVER, RECINTGUID, (LPVOID*)&przRsAcc);
+		CString strFmt = _T("RT2_B6_altec_definition");
+		przRsAcc->put_Source(strFmt.AllocSysString());
+		przRsAcc->Open(vNull, (tagVARIANT)pConn, adOpenDynamic, adLockReadOnly, adCmdTableDirect);
+		//THROW_ERR(m_przRsAcc->Open(vNull, COleVariant(_bstr_t(strConn)), adOpenDynamic, adLockReadOnly, adCmdText) );
+		m_przRsAcc->QueryInterface(__uuidof(IADORecordBinding), (LPVOID*)&picRs3);
+		picRs3->BindToRecordset(&m_przAcc);
+		
+		picRs3->Release();
+		*/
+	/*
+	if (pConn->Open(strConn.AllocSysString()))
+	{
+		
+
+		ADORecSet* rs; 
+		rs = new ADORecSet(pConn);
+		rs->GetRS()->put_CursorLocation(adUseClient);
+		CString sqlstring;
+		sqlstring.Format(_T("select * from RT2_B6_altec_definition"));
+
+		try
+		{
+			rs->Open(adOpenKeyset, sqlstring);
+			LONG vFields = rs->GetFieldsCount();
+			rs->MoveFirst();
+			long pos = 0;
+			while (!rs->IsEOF())
+			{
+				rs->GetFieldValue(0).dblVal;
+				rs->MoveNext();
+			}
+		}
+		catch (...) 
+		{
+			_bstr_t bstrSource(_T("ERRORE TABELLA RT2_B6_altec_definition"));
+			_bstr_t bs(_T(" ERRORE TABELLA RT2_B6_altec_definition "));
+			::MessageBox(0, bs, bstrSource, MB_OK);
+	
+		}
+	
+		rs->Close();
+
+		delete rs;
+	}
+	*/
+
+	
+
+
+	
+
 	String^ jsoinrecordset;
-	/*CString fanmodel = doc["FANMODEL"].GetString();
-	double maxWidth = doc["maxWidth"].GetDouble();
-	double maxHeigth = doc["maxHeigth"].GetDouble();
-	double euroventfactor = doc["euroventfactor"].GetDouble();
-	double minport = doc["minairflow"].GetDouble();
-	double maxport = doc["maxairflow"].GetDouble();
-	double minpd = doc["mindp"].GetDouble();
-	double maxpd = doc["maxdp"].GetDouble();*/
-	//CString r; 
-	//r.Format("{\"FANMODEL\": \"176408\",\"maxWidth\": 10000, \"maxHeigth\": 10000, \"euroventfactor\": 0, \"minairflow\": 0.2, \"maxairflow\": 4, \"mindp\": 20, \"maxdp\": 800}");
 	StringBuffer s;
 	Writer<StringBuffer> writer(s);
 
@@ -359,7 +448,7 @@ String^ Chiller::SearchModel(int model)
 }
 
 // sfp va passato in W/m3/s
-short Chiller::GetSFPClass(double sfp)
+short Rooftop::GetSFPClass(double sfp)
 {
 	short classe = 7;
 	if (sfp < 500)
@@ -380,7 +469,7 @@ short Chiller::GetSFPClass(double sfp)
 }
 
 
-bool Chiller::LoadEBMDll()
+bool Rooftop::LoadEBMDll()
 {
 
 	USES_CONVERSION;
