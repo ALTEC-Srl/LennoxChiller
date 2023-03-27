@@ -66,6 +66,8 @@ namespace LennoxRooftop {
 		//recupero le informazioni nel database interno LENNOX in base all'idmodello richiesto
 		//ritorna un json creato con i dati di ritorno del recordset	
 		String^ SearchModel(int model);
+		void Rooftop::Init();
+		void Rooftop::LoadModel()
 	};
 	///////////////////////////////////////////////////////////////////////////
 

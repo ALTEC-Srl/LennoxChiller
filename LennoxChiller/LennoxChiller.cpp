@@ -322,6 +322,15 @@ String^ Rooftop::GetBIMModel(String^ jSONIN)
 	return  err;
 }
 
+void Rooftop::Init()
+{
+	LoadModel();
+}
+
+void Rooftop::LoadModel()
+{
+
+}
 String^ Rooftop::SearchModel(int model)
 {
 	HRESULT		hr, hr1;
