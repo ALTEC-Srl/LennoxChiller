@@ -6,7 +6,7 @@ Public Class Form1
         Dim output As String
         Dim init As Boolean
 
-        Input = "{""MODELID"": 1,""SUPPLIERID"": 1, ""airflow"": 1, ""fantypeoption"": 10, ""totaloptionpressuredrop"": 200, ""density"": 1.2, ""temperature"": 20}"
+        Input = "{""MODELID"": ""B6FHC025SP1M"",""SUPPLIERID"": 1, ""airflow"": 1, ""fantypeoption"": 10, ""totaloptionpressuredrop"": 200, ""density"": 1.2, ""temperature"": 20}"
         Dim chiller As New LennoxRooftop.Rooftop()
         init = chiller.Init()
         If init = True Then

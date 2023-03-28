@@ -1,6 +1,11 @@
 #pragma once
 #include "rapidjson/document.h"     // rapidjson's DOM-style API
 #include <string>
+#include <map>
+#include <vector>
+#include <msclr\marshal_cppstd.h>
+
+using namespace msclr::interop;
 using namespace rapidjson;
 
 class CGenTableRecord
@@ -29,14 +34,15 @@ public:
 
 	CGenTable() {};
 	
-	bool		 LoadFromDB(const CDBCmdBase& m_dbMacchineSession, const wchar_t* sqlExpression, bool checkExist=true);
-	virtual bool LoadFromDB(const CDBCmdBase& m_dbMacchineSession) { return false; };
-	virtual bool LoadFromExcel(libxl::Book* book) { return false; };
+	bool		 LoadFromDB(const CSession& session, const wchar_t* sqlExpression, bool checkExist=true);
+	//virtual bool LoadFromDB(const CDBCmdBase& m_dbMacchineSession) { return false; };
+	//virtual bool LoadFromExcel(libxl::Book* book) { return false; };
 	const wchar_t*	Lookup(long idtable, const char* tagName) noexcept; // retistuisce una stringa col valore del campo <tagname> per il record che ha chiave idtable
 	CGenTableRecord	Lookup();// cerca i campi specificati nel filtro, assegna il valore del record trovato a result
 	CGenTableRecord Lookup(long idtable);
 	void		ResetFilter() noexcept { filter.clear(); };
 	void		AddFilterField(const char* fieldName, const char* oper, double value);
+	void		AddFilterField(const char* fieldName, const char* oper, const char* value);
 	
 private:
 	Value	emptyValue;

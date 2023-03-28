@@ -1,18 +1,19 @@
 #include "pch.h"
 #include "GenTable.h"
-
+#include "rapidjson\rapidjson.h"
+#include "rapidjson\stringbuffer.h"
+#include "rapidjson\writer.h"
 
 extern  void DisplayOLEDBErrorRecords(HRESULT hrErr = S_OK);
-bool CGenTable::LoadFromDB(const CDBCmdBase& m_dbMacchineSession, const wchar_t* sqlExpression, bool checkExist )
+bool CGenTable::LoadFromDB(const CSession& session, const wchar_t* sqlExpression, bool checkExist )
 {
 	
 	CCommand<CDynamicAccessor> acc1;
 	 
-	HRESULT hr = acc1.Open(m_dbMacchineSession.m_session, sqlExpression);
+	HRESULT hr = acc1.Open(session, sqlExpression);
 	if (!SUCCEEDED(hr) || hr == DB_E_NOTABLE)
 	{
-		if (checkExist)
-			DisplayOLEDBErrorRecords(hr);
+		DisplayOLEDBErrorRecords(hr);
 		return !checkExist;
 	}
 	m_columnName.clear();
@@ -21,7 +22,7 @@ bool CGenTable::LoadFromDB(const CDBCmdBase& m_dbMacchineSession, const wchar_t*
 	long colCount = acc1.GetColumnCount();
 	for (short i = 1; i <= colCount; i++)
 	{
-		m_columnName.push_back(W2A(CString(acc1.GetColumnName(i)).GetString()));
+		m_columnName.push_back(CString(acc1.GetColumnName(i)).GetString());
 	}
 	
 	hr = acc1.MoveFirst();
@@ -43,91 +44,103 @@ bool CGenTable::LoadFromDB(const CDBCmdBase& m_dbMacchineSession, const wchar_t*
 			DBSTATUS st; acc1.GetStatus(i, &st);
 			switch (type)
 			{
-				case DBTYPE_I2:
+			case DBTYPE_BOOL:
+			{
+				if (st != DBSTATUS_S_ISNULL)
 				{
-					if (st != DBSTATUS_S_ISNULL)
-					{
-						short value; acc1.GetValue(i, &value);
-						writer.Int(value);
-					}
-					else
-						writer.Int(0);
+					bool value; acc1.GetValue(i, &value);
+					writer.Int(value);
+				}
+				else
+					writer.Int(0);
+				break;
+			}
+			case DBTYPE_I2:
+			{
+				if (st != DBSTATUS_S_ISNULL)
+				{
+					short value; acc1.GetValue(i, &value);
+					writer.Int(value);
+				}
+				else
+					writer.Int(0);
 
-					break;
-				}
-				case DBTYPE_I4:
-				{
-					if (st != DBSTATUS_S_ISNULL)
-					{
-						long value; acc1.GetValue(i, &value);
-						writer.Int64(value);
-					}
-					else
-						writer.Int64(0);
-					break;
-				}
-				case DBTYPE_R4:
-				{
-					if (st != DBSTATUS_S_ISNULL)
-					{
-						float value; acc1.GetValue(i, &value);
-						writer.Double(value);
-					}
-					else
-						writer.Double(0.0);
-				}
 				break;
-				case DBTYPE_R8:
+			}
+			case DBTYPE_I4:
+			{
+				if (st != DBSTATUS_S_ISNULL)
 				{
-					if (st != DBSTATUS_S_ISNULL)
-					{
-						double value; acc1.GetValue(i, &value);
-						writer.Double(value);
-					}else
-						writer.Double(0.0);
-					
+					long value; acc1.GetValue(i, &value);
+					writer.Int64(value);
 				}
+				else
+					writer.Int64(0);
 				break;
-				case DBTYPE_WSTR:
+			}
+			case DBTYPE_R4:
+			{
+				if (st != DBSTATUS_S_ISNULL)
 				{
+					float value; acc1.GetValue(i, &value);
+					writer.Double(value);
+				}
+				else
+					writer.Double(0.0);
+			}
+			break;
+			case DBTYPE_R8:
+			{
+				if (st != DBSTATUS_S_ISNULL)
+				{
+					double value; acc1.GetValue(i, &value);
+					writer.Double(value);
+				}else
+					writer.Double(0.0);
 					
-					if (st != DBSTATUS_S_ISNULL)
-					{
-						std::wstring value = (wchar_t*)acc1.GetValue(i);
-						writer.String(W2A(value.c_str()));
-					}
-					else
-						writer.String("");
+			}
+			break;
+			case DBTYPE_WSTR:
+			{
+					
+				if (st != DBSTATUS_S_ISNULL)
+				{
+					std::wstring value = (wchar_t*)acc1.GetValue(i);
+					writer.String(W2A(value.c_str()));
+				}
+				else
+					writer.String("");
 
-					break;
-				}
-				case DBTYPE_STR:
-				{
-					DBSTATUS st; acc1.GetStatus(i, &st);
-					if (st != DBSTATUS_S_ISNULL)
-						writer.String((char*)acc1.GetValue(i));
-					else
-						writer.String("");
-					break;
-				}
 				break;
-				case DBTYPE_DATE:
-				{
-					if (st != DBSTATUS_S_ISNULL)
-					{
-						DATE date; acc1.GetValue(i, &date);
-						COleDateTime dat = date;
-						writer.String(W2A(dat.Format().GetString()));
-						//document.AddMember(name, date, document.GetAllocator());
-					}
-					else
-						writer.String("");
-					break;
-				}
+			}
+			case DBTYPE_STR:
+			{
+				DBSTATUS st; acc1.GetStatus(i, &st);
+				if (st != DBSTATUS_S_ISNULL)
+					writer.String((char*)acc1.GetValue(i));
+				else
+					writer.String("");
 				break;
-				default:
-					ASSERT(FALSE);
-					break;
+			}
+			break;
+			case DBTYPE_DATE:
+			{
+				if (st != DBSTATUS_S_ISNULL)
+				{
+					DATE date; acc1.GetValue(i, &date);
+					//COleDateTime dat = date;
+					std::string value = marshal_as<std::string>(date.ToString());
+					writer.String(value.c_str());
+					//document.AddMember(name, date, document.GetAllocator());
+				}
+				else
+					writer.String("");
+				break;
+			}
+			break;
+			default:
+				ASSERT(FALSE);
+				break;
 			}
 			
 		}
@@ -192,46 +205,54 @@ CGenTableRecord CGenTable::Lookup()
 			// Scorre l'elenco dei campi sui quali c'è una condizione nel filtro di input
 			//for (rapidjson::Value::ConstMemberIterator m_iter = field1.MemberBegin();m_iter != field1.MemberEnd(); ++m_iter)//kf pair
 			rapidjson::Value::ConstMemberIterator m_iter = field1.MemberBegin();//kf pair
-			double compareTo = m_iter->value.GetDouble();
-			std::string fieldName = m_iter->name.GetString();
-			m_iter++; // operatore
-			std::string oper = m_iter->value.GetString();
-			// Assumo che il cmap oesista non faccio controllo sulla validità di fieldName
-			ASSERT(record.HasMember(fieldName.c_str()));
-			/*rapidjson::Value::ConstMemberIterator itr = record.FindMember(fieldName.c_str());
-			double toCompare = -1;
-			if (itr != record.MemberEnd())
-				toCompare = itr->value.GetDouble();
-			else			
+			if (m_iter->value.IsDouble())
 			{
-				cond = false;
-				break;
-			}
-			*/
-			double toCompare = record[fieldName.c_str()].GetDouble(); 
-			if (oper.compare("=") == 0)
-			{
-				if (toCompare != compareTo)
-					cond = false;
-			}
-			else
-			{
-				if (oper.compare(">=") == 0)
+				double compareTo = m_iter->value.GetDouble();
+				std::string fieldName = m_iter->name.GetString();
+				m_iter++; // operatore
+				std::string oper = m_iter->value.GetString();
+				// Assumo che il cmap oesista non faccio controllo sulla validità di fieldName
+				ASSERT(record.HasMember(fieldName.c_str()));
+				double toCompare = record[fieldName.c_str()].GetDouble();
+				if (oper.compare("=") == 0)
 				{
-					if (toCompare < compareTo || compareTo == -9999)
-					{
+					if (toCompare != compareTo)
 						cond = false;
-						if (compareTo == -9999 && cont == m_tableDataset.size())
-							cond = true;//l'ultimo è quello che cerco se voglio il record con il valore massimo del campo
-					}
 				}
 				else
 				{
-					if (oper.compare("<=") == 0)
+					if (oper.compare(">=") == 0)
 					{
-						if (toCompare > compareTo)
+						if (toCompare < compareTo || compareTo == -9999)
+						{
 							cond = false;
+							if (compareTo == -9999 && cont == m_tableDataset.size())
+								cond = true;//l'ultimo è quello che cerco se voglio il record con il valore massimo del campo
+						}
 					}
+					else
+					{
+						if (oper.compare("<=") == 0)
+						{
+							if (toCompare > compareTo)
+								cond = false;
+						}
+					}
+				}
+			}
+			else
+			{
+				CString compareTo = m_iter->value.GetString();
+				std::string fieldName = m_iter->name.GetString();
+				m_iter++; // operatore
+				std::string oper = m_iter->value.GetString();
+				// Assumo che il cmap oesista non faccio controllo sulla validità di fieldName
+				ASSERT(record.HasMember(fieldName.c_str()));
+				CString toCompare = record[fieldName.c_str()].GetString();
+				if (oper.compare("=") == 0)
+				{
+					if (toCompare != compareTo)
+						cond = false;
 				}
 			}
 			if (!cond)
@@ -271,6 +292,36 @@ void CGenTable::AddFilterField(const char* fieldName, const char* oper, double v
 	Value& currArray = doc["fields"];
 	ASSERT(currArray.IsArray());
 	currArray.PushBack(object,doc.GetAllocator());
+	doc.Accept(writer);
+	filter = buffer.GetString();
+
+}
+void CGenTable::AddFilterField(const char* fieldName, const char* oper, const char* value)
+{
+	// aggiungo il primo elemento
+	rapidjson::StringBuffer buffer;
+	rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+	if (filter.size() == 0)
+	{
+		writer.StartObject();
+		writer.Key("fields");
+		writer.StartArray();
+		writer.StartObject(); writer.Key(fieldName); writer.String(value); writer.Key("OP"); writer.String(oper); writer.EndObject();
+		writer.EndArray();
+		writer.EndObject();
+		filter = buffer.GetString(); 
+		return;
+	}
+	// Aggiunge un elemento all'array dei campi su cui filtrare
+	Document doc; 
+	doc.Parse(filter.c_str());
+	Value object(kObjectType);
+	object.AddMember(StringRef(fieldName), StringRef(value), doc.GetAllocator());
+	object.AddMember("OP", Value().SetString(oper, doc.GetAllocator()), doc.GetAllocator());
+
+	Value& currArray = doc["fields"];
+	ASSERT(currArray.IsArray());
+	currArray.PushBack(object, doc.GetAllocator());
 	doc.Accept(writer);
 	filter = buffer.GetString();
 

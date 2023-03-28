@@ -54,6 +54,74 @@ CString ExtractString(const CString& str, int* pos, const CString& c2seek = _T("
 	return ris;
 };
 
+void _cdecl OLEDBErrorMessageBox(LPCTSTR lpszFormat, ...)
+{
+	va_list args;
+	va_start(args, lpszFormat);
+
+	int nBuf;
+
+#ifdef _UNICODE
+	WCHAR szBuffer[2048];
+#else
+	CHAR szBuffer[2048];
+#endif
+
+
+
+	nBuf = _vsntprintf_s(szBuffer, sizeof(szBuffer), lpszFormat, args);
+	ATLASSERT(nBuf < sizeof(szBuffer)); //Output truncated as it was > sizeof(szBuffer)
+
+	::MessageBox(NULL, szBuffer, _T("OLE DB Error Message"), MB_OK);
+	va_end(args);
+}
+
+void DisplayOLEDBErrorRecords(HRESULT hrErr = S_OK)
+{
+	CDBErrorInfo ErrorInfo;
+	ULONG        cRecords;
+	HRESULT      hr;
+	ULONG        i;
+	CComBSTR     bstrDesc, bstrHelpFile, bstrSource;
+	GUID         guid;
+	DWORD        dwHelpContext;
+	WCHAR        wszGuid[40];
+	USES_CONVERSION;
+
+	// If the user passed in an HRESULT then trace it
+	if (hrErr != S_OK)
+		OLEDBErrorMessageBox(_T("OLE DB Error Record dump for hr = 0x%x\n"), hrErr);
+
+	LCID lcLocale = GetSystemDefaultLCID();
+
+	hr = ErrorInfo.GetErrorRecords(&cRecords);
+	if (FAILED(hr) && ErrorInfo.m_spErrorInfo == NULL)
+	{
+		OLEDBErrorMessageBox(_T("No OLE DB Error Information found: hr = 0x%x\n"), hr);
+	}
+	else
+	{
+		for (i = 0; i < cRecords; i++)
+		{
+			hr = ErrorInfo.GetAllErrorInfo(i, lcLocale, &bstrDesc, &bstrSource, &guid,
+				&dwHelpContext, &bstrHelpFile);
+			if (FAILED(hr))
+			{
+				OLEDBErrorMessageBox(
+					_T("OLE DB Error Record dump retrieval failed: hr = 0x%x\n"), hr);
+				return;
+			}
+			StringFromGUID2(guid, wszGuid, sizeof(wszGuid) / sizeof(WCHAR));
+			OLEDBErrorMessageBox(
+				_T("Source:\"%s\"\nDescription:\"%s\"\nHelp File:\"%s\"\nHelp Context:%4d\nGUID:%s\n"),
+				OLE2T(bstrSource), OLE2T(bstrDesc), OLE2T(bstrHelpFile), dwHelpContext, OLE2T(wszGuid));
+			bstrSource.Empty();
+			bstrDesc.Empty();
+			bstrHelpFile.Empty();
+		}
+	}
+}
+
 
 String^ Rooftop::GetFanPerformance(String^ jSONIN)
 {
@@ -62,7 +130,7 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
     // lettura dei risultati
     Document doc;
     doc.Parse(str.c_str());
-    int model = doc["MODELID"].GetInt();
+    CString model = doc["MODELID"].GetString();
     int supplier = doc["SUPPLIERID"].GetInt();
     double port = doc["airflow"].GetDouble();
     int opt = doc["fantypeoption"].GetInt();
@@ -335,7 +403,7 @@ bool Rooftop::LoadModel()
 	CString provider = "";
 	if (!OpenDataSource(CString("elencal.udl"), g_Sql, CString(""), CString("")))
 	{
-		MessageBox(NULL, _T("Unable to open session to SQL SERVER"),"ALTEC", MB_ICONWARNING);
+		MessageBox(NULL, _T("Unable to open session to SQL SERVER - Elencal.udl not found"),"ALTEC", MB_ICONWARNING);
 		return false;
 	}
 	
@@ -345,20 +413,71 @@ bool Rooftop::LoadModel()
 	}
 	catch (HRESULT hr)
 	{
-		//DisplayOLEDBErrorRecords(hr);
-		//PopupErrorMessage(hr);
+		DisplayOLEDBErrorRecords(hr);
 		return false;
 	}
 
+	/* test
 	CCommand< CDynamicAccessor > ModelRs;
 	hr = ModelRs.Open(g_session, L"SELECT * from RT2_B6_altec_definition");
 	if (!SUCCEEDED(hr) || hr == DB_E_NOTABLE)
 	{
+	}*/
+
+	CString datastr = L"SELECT RT2_definition.iddefinition, RT2_B6_altec_definition.* \
+ FROM RT2_definition INNER JOIN RT2_B6_altec_definition ON RT2_definition.nomcomm = RT2_B6_altec_definition.Nomcomm";
+	if (g_ModelTable.LoadFromDB(g_session, datastr.AllocSysString(), false))
+		return true;
+	else
+		return false;
+
+
+	//VERSIONE CON ADO E ACCESSOR
+	/*HRESULT		hr;
+	CString varUserId = _T("");
+	CString varPwd = _T("");
+	CString strConn = _T("File Name=elencal.udl;");
+	ADOConnection* pConnSQL = NULL;
+	try
+	{
+		CoCreateInstance(CONGUID, NULL, CLSCTX_INPROC_SERVER, CONINTGUID, (LPVOID*)&pConnSQL);
+		hr = pConnSQL->Open(strConn.AllocSysString(), varUserId.AllocSysString(), varPwd.AllocSysString(), adOpenUnspecified);
 	}
+	catch (HRESULT hr)
+	{
 
-	return true;
+	}
+	ADORecordset* pModelRs = NULL;
 
-	//m_ModelTable.LoadFromDB(m_pConnSQL, L"SELECT * from RT2_B6_altec_definition", false);
+	CModelAccessor modelAccessor;
+	IADORecordBinding* picRs = NULL;   // Interface Pointer declared.  
+
+	_variant_t vNull;
+	CoCreateInstance(RECGUID, NULL, CLSCTX_INPROC_SERVER, RECINTGUID, (LPVOID*)&pModelRs);
+
+	CString strFmt = _T("RT2_B6_altec_definition");
+	hr = pModelRs->put_Source(strFmt.AllocSysString());
+	hr = pModelRs->Open((_variant_t)strFmt.AllocSysString(), _variant_t((IDispatch*)pConnSQL, true),
+		adOpenStatic, adLockReadOnly, adCmdTable);
+	hr = pModelRs->QueryInterface(__uuidof(IADORecordBinding), (LPVOID*)&picRs);
+	hr = picRs->BindToRecordset(&modelAccessor);
+
+	picRs->Release();
+	HRESULT hrpr = pModelRs->MoveFirst();
+	VARIANT_BOOL vbEOF;
+	pModelRs->get_EOF(&vbEOF);
+
+	while (!vbEOF)
+	{
+		pModelRs->MoveNext();
+
+		CString test = modelAccessor.m_Nomecomm;
+
+		pModelRs->get_EOF(&vbEOF);
+	}
+	pModelRs->Close();*/
+
+	
 }
 
 bool Rooftop::OpenDataSource(CString fileName, CDataSource& ds, CString provider, CString pwd)
@@ -407,115 +526,30 @@ bool Rooftop::OpenDataSource(CString fileName, CDataSource& ds, CString provider
 	return true;
 
 }
-String^ Rooftop::SearchModel(int model)
+String^ Rooftop::SearchModel(CString model)
 {
-	HRESULT		hr;
-	CString varUserId = _T("");
-	CString varPwd = _T("");
-	CString strConn = _T("File Name=elencal.udl;");
-	ADOConnection* pConnSQL = NULL;
-	try
-	{
-		CoCreateInstance(CONGUID, NULL, CLSCTX_INPROC_SERVER, CONINTGUID, (LPVOID*)&pConnSQL);
-		hr = pConnSQL->Open(strConn.AllocSysString(), varUserId.AllocSysString(), varPwd.AllocSysString(), adOpenUnspecified);
-	}
-	catch (HRESULT hr)
-	{
-
-	}
-	ADORecordset* pModelRs = NULL;
-	
-	CModelAccessor modelAccessor;
-	IADORecordBinding* picRs = NULL;   // Interface Pointer declared.  
-
-	_variant_t vNull;
-	CoCreateInstance(RECGUID, NULL, CLSCTX_INPROC_SERVER, RECINTGUID, (LPVOID*)&pModelRs);
-
-	CString strFmt = _T("RT2_B6_altec_definition");
-	hr = pModelRs->put_Source(strFmt.AllocSysString());
-	hr = pModelRs->Open((_variant_t)strFmt.AllocSysString(), _variant_t((IDispatch*)pConnSQL, true),
-		adOpenStatic, adLockReadOnly, adCmdTable);
-	hr = pModelRs->QueryInterface(__uuidof(IADORecordBinding), (LPVOID*)&picRs);
-	hr = picRs->BindToRecordset(&modelAccessor);
-	
-	picRs->Release();
-	HRESULT hrpr = pModelRs->MoveFirst();
-	VARIANT_BOOL vbEOF;
-	pModelRs->get_EOF(&vbEOF);
-	
-	while (!vbEOF)
-	{
-		pModelRs->MoveNext();
-		
-		CString test = modelAccessor.m_Nomecomm;
-		
-		pModelRs->get_EOF(&vbEOF);
-	}
-	pModelRs->Close();
-	
-	
-
-
-	/*CComPtr<ADORecordset> przRsAcc;
-		//CModel m_ModelAcc;
-		CoCreateInstance(RECGUID, NULL, CLSCTX_INPROC_SERVER, RECINTGUID, (LPVOID*)&przRsAcc);
-		CString strFmt = _T("RT2_B6_altec_definition");
-		przRsAcc->put_Source(strFmt.AllocSysString());
-		przRsAcc->Open(vNull, (tagVARIANT)pConn, adOpenDynamic, adLockReadOnly, adCmdTableDirect);
-		//THROW_ERR(m_przRsAcc->Open(vNull, COleVariant(_bstr_t(strConn)), adOpenDynamic, adLockReadOnly, adCmdText) );
-		m_przRsAcc->QueryInterface(__uuidof(IADORecordBinding), (LPVOID*)&picRs3);
-		picRs3->BindToRecordset(&m_przAcc);
-		
-		picRs3->Release();
-		*/
-	/*
-	if (pConn->Open(strConn.AllocSysString()))
-	{
-		
-
-		ADORecSet* rs; 
-		rs = new ADORecSet(pConn);
-		rs->GetRS()->put_CursorLocation(adUseClient);
-		CString sqlstring;
-		sqlstring.Format(_T("select * from RT2_B6_altec_definition"));
-
-		try
-		{
-			rs->Open(adOpenKeyset, sqlstring);
-			LONG vFields = rs->GetFieldsCount();
-			rs->MoveFirst();
-			long pos = 0;
-			while (!rs->IsEOF())
-			{
-				rs->GetFieldValue(0).dblVal;
-				rs->MoveNext();
-			}
-		}
-		catch (...) 
-		{
-			_bstr_t bstrSource(_T("ERRORE TABELLA RT2_B6_altec_definition"));
-			_bstr_t bs(_T(" ERRORE TABELLA RT2_B6_altec_definition "));
-			::MessageBox(0, bs, bstrSource, MB_OK);
-	
-		}
-	
-		rs->Close();
-
-		delete rs;
-	}
-	*/
-
-	
-
-
-	
-
 	String^ jsoinrecordset;
+	
+	g_ModelTable.ResetFilter();
+	g_ModelTable.AddFilterField("Nomcomm", "=", model);
+	CGenTableRecord modello = g_ModelTable.Lookup();
+
+	if (!modello.IsValid())
+		return jsoinrecordset;
+
+	long val;
+	CString test;
+	modello.GetColumn("C1_Outdoor_fan_airflow", val);
+	test.Format(_T("%d"), val);
+	::MessageBox(NULL, test, _T("modello fan"), MB_OK);
+
+
+	
 	StringBuffer s;
 	Writer<StringBuffer> writer(s);
 
 	writer.StartObject();
-	writer.Key("FANMODEL"); writer.String("176408");
+	writer.Key("FANMODEL"); writer.Int64(val);
 	writer.Key("maxWidth"); writer.Double(10000);
 	writer.Key("maxHeigth"); writer.Double(10000);
 	writer.Key("euroventfactor"); writer.Double(0);

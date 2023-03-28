@@ -2,13 +2,14 @@
 
 #include <atlstr.h>
 #include <string>
+#include <map>
 #include <msclr\marshal_cppstd.h>
 #include "rapidjson\document.h"     // rapidjson's DOM-style API
 #include "rapidjson\rapidjson.h"
 #include "rapidjson\stringbuffer.h"
 #include "rapidjson\writer.h"
 #include "msjetoledb.h"
-//#include "GenTable.h"
+#include "GenTable.h"
 
 // Metodi per EBM 
 //typedef int (__stdcall *PEBMPAPSTFAN_FNCT6)(	char** in, char** out);
@@ -26,31 +27,24 @@ using namespace rapidjson;
 
 CDataSource		g_Sql;
 CSession		g_session;
+CGenTable       g_ModelTable;
 
 namespace LennoxRooftop {
 
-	class CModelAccessor : public CADORecordBinding {
+	/*class CModelAccessor : public CADORecordBinding {
 		BEGIN_ADO_BINDING(CModelAccessor)
 
 			// Column fname is the 2nd field in the table     
 			ADO_VARIABLE_LENGTH_ENTRY2(3, adVarChar, m_Nomecomm,
 				sizeof(m_Nomecomm), m_NomecommStatus, FALSE)
 
-			/*/ Column lname is the 4th field in the table.  
-			ADO_VARIABLE_LENGTH_ENTRY2(4, adVarChar, m_sze_lname,
-				sizeof(m_sze_lname), le_lnameStatus, FALSE)
-
-			// Column hiredate is the 8th field in the table.  
-			ADO_VARIABLE_LENGTH_ENTRY2(8, adDBDate, m_sze_hiredate,
-				sizeof(m_sze_hiredate), le_hiredateStatus, TRUE)
-				*/
 			END_ADO_BINDING()
 
 	public:
 		CHAR   m_Nomecomm[255];
 		ULONG   m_NomecommStatus;
 		
-	};
+	};*/
 
 	public ref class Rooftop
 	{
@@ -69,12 +63,10 @@ namespace LennoxRooftop {
 		short GetSFPClass(double sfp);
 		//recupero le informazioni nel database interno LENNOX in base all'idmodello richiesto
 		//ritorna un json creato con i dati di ritorno del recordset	
-		String^ SearchModel(int model);
+		String^ SearchModel(CString model);
 		bool LoadModel();
 		bool OpenDataSource(CString fileName, CDataSource& ds, CString provider, CString pwd);
 		
-
-		//CGenTable m_ModelTable; 
 	};
 	///////////////////////////////////////////////////////////////////////////
 
