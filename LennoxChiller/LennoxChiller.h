@@ -7,7 +7,8 @@
 #include "rapidjson\rapidjson.h"
 #include "rapidjson\stringbuffer.h"
 #include "rapidjson\writer.h"
-
+#include "msjetoledb.h"
+//#include "GenTable.h"
 
 // Metodi per EBM 
 //typedef int (__stdcall *PEBMPAPSTFAN_FNCT6)(	char** in, char** out);
@@ -22,6 +23,9 @@ typedef int(__stdcall* PEBMPAPSTFAN_FNCT17)(char* KEY, char* SIZE, char* TYP, ch
 using namespace System;
 using namespace msclr::interop;
 using namespace rapidjson;
+
+CDataSource		g_Sql;
+CSession		g_session;
 
 namespace LennoxRooftop {
 
@@ -59,15 +63,18 @@ namespace LennoxRooftop {
 		String^ GetOptionsPressureDrop(String^ jSONIN);
 		String^ GetDrawing(String^ jSONIN);
 		String^ GetBIMModel(String^ jSONIN);
-
+		bool Init();
 	private:
 		bool LoadEBMDll();
 		short GetSFPClass(double sfp);
 		//recupero le informazioni nel database interno LENNOX in base all'idmodello richiesto
 		//ritorna un json creato con i dati di ritorno del recordset	
 		String^ SearchModel(int model);
-		void Rooftop::Init();
-		void Rooftop::LoadModel()
+		bool LoadModel();
+		bool OpenDataSource(CString fileName, CDataSource& ds, CString provider, CString pwd);
+		
+
+		//CGenTable m_ModelTable; 
 	};
 	///////////////////////////////////////////////////////////////////////////
 

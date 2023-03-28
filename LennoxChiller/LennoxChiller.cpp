@@ -322,45 +322,118 @@ String^ Rooftop::GetBIMModel(String^ jSONIN)
 	return  err;
 }
 
-void Rooftop::Init()
+bool Rooftop::Init()
 {
-	LoadModel();
+	return LoadModel();
 }
 
-void Rooftop::LoadModel()
+bool Rooftop::LoadModel()
 {
+	HRESULT		hr;
+	
+
+	CString provider = "";
+	if (!OpenDataSource(CString("elencal.udl"), g_Sql, CString(""), CString("")))
+	{
+		MessageBox(NULL, _T("Unable to open session to SQL SERVER"),"ALTEC", MB_ICONWARNING);
+		return false;
+	}
+	
+	try
+	{
+		g_session.Open(g_Sql);
+	}
+	catch (HRESULT hr)
+	{
+		//DisplayOLEDBErrorRecords(hr);
+		//PopupErrorMessage(hr);
+		return false;
+	}
+
+	CCommand< CDynamicAccessor > ModelRs;
+	hr = ModelRs.Open(g_session, L"SELECT * from RT2_B6_altec_definition");
+	if (!SUCCEEDED(hr) || hr == DB_E_NOTABLE)
+	{
+	}
+
+	return true;
+
+	//m_ModelTable.LoadFromDB(m_pConnSQL, L"SELECT * from RT2_B6_altec_definition", false);
+}
+
+bool Rooftop::OpenDataSource(CString fileName, CDataSource& ds, CString provider, CString pwd)
+{
+
+	// Default provider = JET
+	if (provider.IsEmpty())
+		provider = _T("Microsoft.JET.OLEDB.4.0");
+
+	CSession session;
+	CDBPropSet dbps;
+	dbps.SetGUID(DBPROPSET_JETOLEDB_DBINIT);
+
+	CString con;
+	if (fileName.Find(_T(".udl")) != -1)
+		con.Format(_T("File Name=%s;"), fileName);
+	else
+	{
+		con = _T("Provider=");
+		con += provider + _T("; Data Source=") + fileName;
+		if (!pwd.IsEmpty())
+		{
+			con += _T("; Jet OLEDB:Database Password=") + pwd;
+		}
+	}
+	_bstr_t bstrConnect;
+	_bstr_t bstrFile;
+	bstrConnect = con;
+	bstrFile = fileName;
+
+	HRESULT hr;
+
+	if (fileName.Find(_T(".udl")) != -1)
+		hr = ds.OpenFromFileName(bstrFile);
+	else
+		hr = ds.OpenFromInitializationString(bstrConnect);
+	
+	if (FAILED(hr))
+	{
+		//DisplayOLEDBErrorRecords(hr);
+		//PopupErrorMessage(hr);
+		return false;
+	}
+
+
+	return true;
 
 }
 String^ Rooftop::SearchModel(int model)
 {
-	HRESULT		hr, hr1;
+	HRESULT		hr;
 	CString varUserId = _T("");
 	CString varPwd = _T("");
-	CString strConn = _T("File Name=elencal.UDL;");
+	CString strConn = _T("File Name=elencal.udl;");
+	ADOConnection* pConnSQL = NULL;
+	try
+	{
+		CoCreateInstance(CONGUID, NULL, CLSCTX_INPROC_SERVER, CONINTGUID, (LPVOID*)&pConnSQL);
+		hr = pConnSQL->Open(strConn.AllocSysString(), varUserId.AllocSysString(), varPwd.AllocSysString(), adOpenUnspecified);
+	}
+	catch (HRESULT hr)
+	{
+
+	}
 	ADORecordset* pModelRs = NULL;
-	ADOConnection* pConn = NULL;
+	
 	CModelAccessor modelAccessor;
 	IADORecordBinding* picRs = NULL;   // Interface Pointer declared.  
 
-	try
-	{ 
-		CoCreateInstance(CONGUID, NULL, CLSCTX_INPROC_SERVER, CONINTGUID, (LPVOID*)&pConn);
-		hr = pConn->Open(strConn.AllocSysString(), varUserId.AllocSysString(), varPwd.AllocSysString(), adOpenUnspecified);
-	} 
-	catch (HRESULT hr)
-	{
-		//if (pConn)
-		//	pConn->Release();
-		//AfxMessageBox(_T("Errore in apertura connessione a SQL SERVER. Verificare la correttezza del file GESTIONECTA.UDL"));
-		//DisplayOLEDBErrorRecords(hr);
-		//return false;
-	} 
 	_variant_t vNull;
 	CoCreateInstance(RECGUID, NULL, CLSCTX_INPROC_SERVER, RECINTGUID, (LPVOID*)&pModelRs);
 
 	CString strFmt = _T("RT2_B6_altec_definition");
 	hr = pModelRs->put_Source(strFmt.AllocSysString());
-	hr = pModelRs->Open((_variant_t)strFmt.AllocSysString(), _variant_t((IDispatch*)pConn, true),
+	hr = pModelRs->Open((_variant_t)strFmt.AllocSysString(), _variant_t((IDispatch*)pConnSQL, true),
 		adOpenStatic, adLockReadOnly, adCmdTable);
 	hr = pModelRs->QueryInterface(__uuidof(IADORecordBinding), (LPVOID*)&picRs);
 	hr = picRs->BindToRecordset(&modelAccessor);
@@ -379,6 +452,9 @@ String^ Rooftop::SearchModel(int model)
 		pModelRs->get_EOF(&vbEOF);
 	}
 	pModelRs->Close();
+	
+	
+
 
 	/*CComPtr<ADORecordset> przRsAcc;
 		//CModel m_ModelAcc;

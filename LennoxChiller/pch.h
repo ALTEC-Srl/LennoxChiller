@@ -6,6 +6,7 @@
 
 #ifndef PCH_H
 #define PCH_H
+#define _AFXDLL
 
 // aggiungere qui le intestazioni da precompilare
 //#include <adoid.h>
@@ -13,6 +14,10 @@
 #include "..\msadox.tlh"
 #include <oledb.h> 
 #include "icrsint.h"  
+#include <atldbcli.h>
+#include <afxtempl.h>		// MFC Template classes
+
+
 constexpr long lenRis = 40000;
 
 #define SAFE_DELETE(x)			{ if((x)){delete (x); (x)=NULL;} }  
