@@ -549,7 +549,7 @@ String^ Rooftop::SearchModel(CString model)
 	Writer<StringBuffer> writer(s);
 
 	writer.StartObject();
-	writer.Key("FANMODEL"); writer.Int64(val);
+	writer.Key("FANMODEL"); writer.String(test);
 	writer.Key("maxWidth"); writer.Double(10000);
 	writer.Key("maxHeigth"); writer.Double(10000);
 	writer.Key("euroventfactor"); writer.Double(0);
