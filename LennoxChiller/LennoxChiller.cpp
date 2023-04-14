@@ -132,11 +132,12 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
     doc.Parse(str.c_str());
     CString model = doc["MODELID"].GetString();
     int supplier = doc["SUPPLIERID"].GetInt();
-    double port = doc["airflow"].GetDouble();
-    int opt = doc["fantypeoption"].GetInt();
-    double pTot = doc["totaloptionpressuredrop"].GetDouble();
-	double dens = doc["density"].GetDouble(); //aggiunta rispetto specifica
-	double temp = doc["temperature"].GetDouble(); //aggiunta rispetto specifica
+    double port = doc["airflow"].GetDouble()/3600.0;
+	CString fantype = doc["fantype"].GetString();
+    double pTot = doc["optionsdp"].GetDouble();
+	double dens = doc["density"].GetDouble(); 
+	double temp = doc["temperature"].GetDouble();
+	int iqngn = doc["iqngn"].GetInt();
 
 	//recupero le informazioni nel database interno LENNOX in base all'idmodello richiesto
 	//ritorna un json creato con i dati di ritorno del recordset
@@ -158,7 +159,7 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 
 	if (supplier == 1)
 	{
-		LoadEBMDll();
+		//LoadEBMDll();
 
 		CString request;
 		INT num = 0; 
@@ -376,6 +377,23 @@ String^ Rooftop::GetNoiseData1(String^ jSONIN)
 }
 String^ Rooftop::GetOptionsPressureDrop(String^ jSONIN) 
 {
+	std::string str = marshal_as<std::string>(jSONIN);
+	// lettura dei risultati
+	Document doc;
+	doc.Parse(str.c_str());
+	CString model = doc["MODELID"].GetString();
+	double portex = doc["airflowexhaust"].GetDouble();
+	double portsup = doc["airflowsupply"].GetDouble();
+	double td1 = doc["coiltempdb"].GetDouble();
+	double tw1 = doc["coiltempwb"].GetDouble();
+	double td2 = doc["coiltempposthdb"].GetDouble();
+	double tw2 = doc["coiltempposthwb"].GetDouble();
+	double td3 = doc["coiltemppostcdb"].GetDouble();
+	double tw3 = doc["coiltemppostcwb"].GetDouble();
+	int iqngn = doc["iqngn"].GetInt();
+
+
+
 	String^ err;
 	return  err;
 }
@@ -392,7 +410,20 @@ String^ Rooftop::GetBIMModel(String^ jSONIN)
 
 bool Rooftop::Init()
 {
-	return LoadModel();
+	bool l;
+	TCHAR szPathProgramData[1024];
+	GetCurrentDirectory(1024, szPathProgramData);
+	CString path = CString(szPathProgramData);
+	::MessageBox(NULL, path, _T(""), MB_OK);
+	//String^ str = marshal_as <std::string> path;
+	//String^ boh = str;
+
+	l =  LoadModel();
+	l &= LoadEBMDll();
+
+	SetCurrentDirectory(path); //setting path
+	::MessageBox(NULL, path, _T(""), MB_OK);
+	return l;
 }
 
 bool Rooftop::LoadModel()
@@ -530,9 +561,10 @@ String^ Rooftop::SearchModel(CString model)
 {
 	String^ jsoinrecordset;
 	
-	g_ModelTable.ResetFilter();
-	g_ModelTable.AddFilterField("Nomcomm", "=", model);
-	CGenTableRecord modello = g_ModelTable.Lookup();
+	//g_ModelTable.ResetFilter();
+	std::string filter;
+	g_ModelTable.AddFilterField("Nomcomm", "=", model, filter);
+	CGenTableRecord modello = g_ModelTable.Lookup(filter);
 
 	if (!modello.IsValid())
 		return jsoinrecordset;
@@ -543,7 +575,7 @@ String^ Rooftop::SearchModel(CString model)
 	test.Format(_T("%d"), val);
 	::MessageBox(NULL, test, _T("modello fan"), MB_OK);
 
-
+	//CString test = "176408";
 	
 	StringBuffer s;
 	Writer<StringBuffer> writer(s);
@@ -592,6 +624,8 @@ bool Rooftop::LoadEBMDll()
 {
 
 	USES_CONVERSION;
+	
+
 	CString temp = ("\\data\\plug_fans");
 	char path33[MAX_PATH + 1];
 
@@ -707,6 +741,8 @@ bool Rooftop::LoadEBMDll()
 	GET_GRAPH_POWER_PC = (PEBMPAPSTFAN_FNCT6)GetProcAddress(g_EbmPapstFanDLL, "GET_GRAPH_POWER_PC");
 	GET_GRAPH_SOUND_PC = (PEBMPAPSTFAN_FNCT6)GetProcAddress(g_EbmPapstFanDLL, "GET_GRAPH_SOUND_PC");
 	GET_STANDARDS_FANMOTOR = (PEBMPAPSTFAN_FNCT17)GetProcAddress(g_EbmPapstFanDLL, "GET_STANDARDS_FANMOTOR");;
+
+	
 	return true;
 }
 

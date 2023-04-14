@@ -156,7 +156,7 @@ bool CGenTable::LoadFromDB(const CSession& session, const wchar_t* sqlExpression
 }
 
 
-const wchar_t* CGenTable::Lookup(long idtable, const char* tagName) noexcept
+const wchar_t* CGenTable::Lookup(long idtable, const char* tagName) const noexcept
 {
 	
 	auto record = m_tableID_Pos_Dataset.find(idtable);
@@ -164,14 +164,17 @@ const wchar_t* CGenTable::Lookup(long idtable, const char* tagName) noexcept
 		return nullptr;
 	
 	USES_CONVERSION;
-	currRecord.Parse(m_tableDataset[record->second].c_str());
+	/*currRecord.Parse(m_tableDataset[record->second].c_str());
 	ASSERT(currRecord.HasMember(tagName));
-	return A2W(currRecord[tagName].GetString());
+	return A2W(currRecord[tagName].GetString());*/
+	Document recordJSON; recordJSON.Parse(m_tableDataset[record->second].c_str());
+	ASSERT(recordJSON.HasMember(tagName));
+	return A2W(recordJSON[tagName].GetString());
 	
 }
 
 // ritorna una stringa json con il record che corrisponde alla ricerca effettuata
-CGenTableRecord CGenTable::Lookup(long idtable)
+CGenTableRecord CGenTable::Lookup(long idtable) const noexcept
 {
 	auto record = m_tableID_Pos_Dataset.find(idtable);
 	if (record == m_tableID_Pos_Dataset.end())
@@ -181,7 +184,7 @@ CGenTableRecord CGenTable::Lookup(long idtable)
 }
 
 // ritorna una stringa json con il record che corrisponde alla ricerca effettuata
-CGenTableRecord CGenTable::Lookup()
+CGenTableRecord CGenTable::Lookup(const std::string& filter, std::vector<std::string>* pList)  const noexcept
 {
 	if (filter.size() == 0)
 		return CGenTableRecord();
@@ -192,38 +195,75 @@ CGenTableRecord CGenTable::Lookup()
 	// FS 29-08-2022 se l'operatore >= ha operando pari a -9999 allora cerco il record conil massimo valore del campo a parità delle altre condizioni, 
 	// vale sempre l'assunzione sul criterio sull'ordinamento
 	short cont = 0;
-
+	std::string lastGood;
+	double toCompare, compareTo, compareTo2;
+	const char* compareToS = nullptr;
 	for (const auto& recordJson : m_tableDataset)
 	{
 		cont++;
 		record.Parse(recordJson.c_str());
 		bool cond = true;
 		const rapidjson::Value& k = document["fields"];
+
 		for (rapidjson::Value::ConstValueIterator field = k.Begin(); field != k.End(); ++field)
 		{
-			const rapidjson::Value& field1 = *field;
+			const rapidjson::Value& field1 = *field; // Singolo oggetto del JSON
 			// Scorre l'elenco dei campi sui quali c'è una condizione nel filtro di input
-			//for (rapidjson::Value::ConstMemberIterator m_iter = field1.MemberBegin();m_iter != field1.MemberEnd(); ++m_iter)//kf pair
-			rapidjson::Value::ConstMemberIterator m_iter = field1.MemberBegin();//kf pair
+			rapidjson::Value::ConstMemberIterator m_iter = field1.MemberBegin();// primo campo dell'oggetto
+			compareTo = -99;
 			if (m_iter->value.IsDouble())
+				compareTo = m_iter->value.GetDouble();
+			if (m_iter->value.IsString())
+				compareToS = m_iter->value.GetString();
+
+			std::string fieldName = m_iter->name.GetString();
+			m_iter++; std::string oper = m_iter->value.GetString();
+			m_iter++; ASSERT(m_iter->value.IsBool());  bool isNullValid = m_iter->value.GetBool(); // null valore valido ?
+			m_iter++; long OrValue = m_iter->value.GetInt(); // FS 16-10-2022 Valore in or
+			compareTo2 = OrValue != -99 ? OrValue : compareTo;
+			bool isNull = false;
+			// Assumo che il campo oesista non faccio controllo sulla validità di fieldName
+			ASSERT(record.HasMember(fieldName.c_str()));
+			ASSERT(record.FindMember(fieldName.c_str()) != record.MemberEnd());
+			const rapidjson::Value& tcValue = record[fieldName.c_str()]; //; itr->value.GetDouble();
+
+			if (!tcValue.IsString())
 			{
-				double compareTo = m_iter->value.GetDouble();
-				std::string fieldName = m_iter->name.GetString();
-				m_iter++; // operatore
-				std::string oper = m_iter->value.GetString();
-				// Assumo che il cmap oesista non faccio controllo sulla validità di fieldName
-				ASSERT(record.HasMember(fieldName.c_str()));
-				double toCompare = record[fieldName.c_str()].GetDouble();
-				if (oper.compare("=") == 0)
+				if (tcValue.IsNull())
+					isNull = true;
+				else
+					toCompare = tcValue.GetDouble();
+			}
+
+			if (oper.compare("=") == 0)
+			{
+				if (tcValue.IsString())
 				{
-					if (toCompare != compareTo)
+					if (strcmp(compareToS, tcValue.GetString()) != 0)
 						cond = false;
+				}
+				else // Double 
+				{
+					if (isNull && !isNullValid || (!isNull && (toCompare != compareTo && toCompare != compareTo2)))
+						cond = false;
+				}
+			}
+			else
+			{
+				if (oper.compare(">=") == 0)
+				{
+					if ((toCompare < compareTo || compareTo == -9999) && (toCompare < compareTo2))
+					{
+						cond = false;
+						if (compareTo == -9999 && cont == m_tableDataset.size())
+							cond = true;//l'ultimo è quello che cerco se voglio il record con il valore massimo del campo
+					}
 				}
 				else
 				{
-					if (oper.compare(">=") == 0)
+					if (oper.compare(">") == 0)
 					{
-						if (toCompare < compareTo || compareTo == -9999)
+						if ((toCompare <= compareTo || compareTo == -9999) && (toCompare <= compareTo2))
 						{
 							cond = false;
 							if (compareTo == -9999 && cont == m_tableDataset.size())
@@ -234,25 +274,20 @@ CGenTableRecord CGenTable::Lookup()
 					{
 						if (oper.compare("<=") == 0)
 						{
-							if (toCompare > compareTo)
-								cond = false;
+							if (toCompare > fabs(compareTo) && (toCompare > fabs(compareTo2)))
+							{
+								cond = compareTo < 0; //false;
+							}
+							else
+							{
+								if (compareTo < 0) // Cerco il record con il valore massimo del campo inferiore al valore del filtro 
+								{
+									lastGood = recordJson;
+									cond = false;
+								}
+							}
 						}
 					}
-				}
-			}
-			else
-			{
-				CString compareTo = m_iter->value.GetString();
-				std::string fieldName = m_iter->name.GetString();
-				m_iter++; // operatore
-				std::string oper = m_iter->value.GetString();
-				// Assumo che il cmap oesista non faccio controllo sulla validità di fieldName
-				ASSERT(record.HasMember(fieldName.c_str()));
-				CString toCompare = record[fieldName.c_str()].GetString();
-				if (oper.compare("=") == 0)
-				{
-					if (toCompare != compareTo)
-						cond = false;
 				}
 			}
 			if (!cond)
@@ -260,13 +295,218 @@ CGenTableRecord CGenTable::Lookup()
 		}
 		if (cond)
 		{
-			return CGenTableRecord(recordJson.c_str());
+			if (!pList)
+			{
+				if (lastGood.length() > 0)
+					return CGenTableRecord(lastGood.c_str());
+				//m_lastRecord = record;
+				return CGenTableRecord(recordJson.c_str());
+			}
+
+			pList->push_back(recordJson.c_str());
 		}
 	}
-	
+	if (lastGood.length() > 0)
+		return CGenTableRecord(lastGood.c_str());
+
 	return CGenTableRecord();
 }
 
+const CGenTableRecord& CGenTable::Lookup1(const std::string& filter, std::vector<std::string>* pList)  noexcept
+{
+	if (filter.size() == 0)
+		return CGenTableRecord();
+
+	Document record, document;
+	document.Parse(filter.c_str());
+	// trovo il primo record, si assume che l'ordinamento sia corretto in base all'elenco dei campi indicati nel filtro
+	// FS 29-08-2022 se l'operatore >= ha operando pari a -9999 allora cerco il record conil massimo valore del campo a parità delle altre condizioni, 
+	// vale sempre l'assunzione sul criterio sull'ordinamento
+	short cont = 0;
+	std::string lastGood;
+	double toCompare, compareTo, compareTo2;
+	const char* compareToS = nullptr;
+	for (const auto& recordJson : m_tableDataset)
+	{
+		cont++;
+		record.Parse(recordJson.c_str());
+		bool cond = true;
+		const rapidjson::Value& k = document["fields"];
+
+		for (rapidjson::Value::ConstValueIterator field = k.Begin(); field != k.End(); ++field)
+		{
+			const rapidjson::Value& field1 = *field; // Singolo oggetto del JSON
+			// Scorre l'elenco dei campi sui quali c'è una condizione nel filtro di input
+			rapidjson::Value::ConstMemberIterator m_iter = field1.MemberBegin();// primo campo dell'oggetto
+			if (m_iter->value.IsDouble())
+				compareTo = m_iter->value.GetDouble();
+			if (m_iter->value.IsString())
+				compareToS = m_iter->value.GetString();
+
+			std::string fieldName = m_iter->name.GetString();
+			m_iter++; std::string oper = m_iter->value.GetString();
+			m_iter++; ASSERT(m_iter->value.IsBool());  bool isNullValid = m_iter->value.GetBool(); // null valore valido ?
+			m_iter++; long OrValue = m_iter->value.GetInt(); // FS 16-10-2022 Valore in or
+			compareTo2 = OrValue != -99 ? OrValue : compareTo;
+			bool isNull = false;
+			// Assumo che il campo oesista non faccio controllo sulla validità di fieldName
+			ASSERT(record.HasMember(fieldName.c_str()));
+			ASSERT(record.FindMember(fieldName.c_str()) != record.MemberEnd());
+			const rapidjson::Value& tcValue = record[fieldName.c_str()]; //; itr->value.GetDouble();
+
+			if (!tcValue.IsString())
+			{
+				if (tcValue.IsNull())
+					isNull = true;
+				else
+					toCompare = tcValue.GetDouble();
+			}
+
+			if (oper.compare("=") == 0)
+			{
+				if (tcValue.IsString())
+				{
+					if (strcmp(compareToS, tcValue.GetString()) != 0)
+						cond = false;
+				}
+				else // Double 
+				{
+					if (isNull && !isNullValid || (!isNull && (toCompare != compareTo && toCompare != compareTo2)))
+						cond = false;
+				}
+			}
+			else
+			{
+				if (oper.compare(">=") == 0)
+				{
+					if ((toCompare < compareTo || compareTo == -9999) && (toCompare != compareTo2))
+					{
+						cond = false;
+						if (compareTo == -9999 && cont == m_tableDataset.size())
+							cond = true;//l'ultimo è quello che cerco se voglio il record con il valore massimo del campo
+					}
+				}
+				else
+				{
+					if (oper.compare("<=") == 0)
+					{
+						if (toCompare > fabs(compareTo) && (toCompare != compareTo2))
+						{
+							cond = compareTo < 0; //false;
+						}
+						else
+						{
+							if (compareTo < 0) // Cerco il record con il valore massimo del campo inferiore al valore del filtro 
+							{
+								lastGood = recordJson;
+								cond = false;
+							}
+						}
+					}
+				}
+			}
+			if (!cond)
+				break;
+		}
+		if (cond)
+		{
+			if (!pList)
+			{
+				if (lastGood.length() > 0)
+					return CGenTableRecord(lastGood.c_str());
+				m_lastRecord = record;
+				return m_lastRecord; // CGenTableRecord(recordJson.c_str());
+			}
+
+			pList->push_back(recordJson.c_str());
+		}
+	}
+	if (lastGood.length() > 0)
+		return CGenTableRecord(lastGood.c_str());
+
+	return CGenTableRecord();
+}
+
+std::vector<std::string> CGenTable::GetRecordList(const std::string& filter) const noexcept
+{
+	std::vector<std::string> recordList;
+	Lookup(filter, &recordList);
+	return recordList;
+
+}
+void CGenTable::AddFilterField(const char* fieldName, const char* oper, const char* value, std::string& filter, bool IsNullValid, long id1) const noexcept
+{
+	// aggiungo il primo elemento
+	rapidjson::StringBuffer buffer;
+	rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+	if (filter.size() == 0)
+	{
+		writer.StartObject();
+		writer.Key("fields");
+		writer.StartArray();
+		writer.StartObject();
+		writer.Key(fieldName); writer.String(value);
+		writer.Key("OP"); writer.String(oper);
+		writer.Key("ISNULL"); writer.Bool(IsNullValid);
+		writer.Key("VALOREOR"); writer.Int(id1);
+		writer.EndObject();
+		writer.EndArray();
+		writer.EndObject();
+		filter = buffer.GetString();
+		return;
+	}
+	// Aggiunge un elemento all'array dei campi su cui filtrare
+	Document doc; doc.Parse(filter.c_str());
+	Value object(kObjectType);
+	object.AddMember(StringRef(fieldName), StringRef(value), doc.GetAllocator());
+	object.AddMember("OP", Value().SetString(oper, doc.GetAllocator()), doc.GetAllocator());
+	object.AddMember("ISNULL", IsNullValid, doc.GetAllocator());
+	object.AddMember("VALOREOR", id1, doc.GetAllocator());
+
+	Value& currArray = doc["fields"];
+	ASSERT(currArray.IsArray());
+	currArray.PushBack(object, doc.GetAllocator());
+	doc.Accept(writer);
+	filter = buffer.GetString();
+}
+
+void CGenTable::AddFilterField(const char* fieldName, const char* oper, double value, std::string& filter, bool IsNullValid, long id1) const noexcept
+{
+	// aggiungo il primo elemento
+	rapidjson::StringBuffer buffer;
+	rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+	if (filter.size() == 0)
+	{
+		writer.StartObject();
+		writer.Key("fields");
+		writer.StartArray();
+		writer.StartObject();
+		writer.Key(fieldName); writer.Double(value);
+		writer.Key("OP"); writer.String(oper);
+		writer.Key("ISNULL"); writer.Bool(IsNullValid);
+		writer.Key("VALOREOR"); writer.Int(id1);
+		writer.EndObject();
+		writer.EndArray();
+		writer.EndObject();
+		filter = buffer.GetString();
+		return;
+	}
+	// Aggiunge un elemento all'array dei campi su cui filtrare
+	Document doc; doc.Parse(filter.c_str());
+	Value object(kObjectType);
+	object.AddMember(StringRef(fieldName), value, doc.GetAllocator());
+	object.AddMember("OP", Value().SetString(oper, doc.GetAllocator()), doc.GetAllocator());
+	object.AddMember("ISNULL", IsNullValid, doc.GetAllocator());
+	object.AddMember("VALOREOR", id1, doc.GetAllocator());
+	Value& currArray = doc["fields"];
+	ASSERT(currArray.IsArray());
+	currArray.PushBack(object, doc.GetAllocator());
+	doc.Accept(writer);
+	filter = buffer.GetString();
+
+}
+
+/*
 void CGenTable::AddFilterField(const char* fieldName, const char* oper, double value)
 {
 	// aggiungo il primo elemento
@@ -326,7 +566,7 @@ void CGenTable::AddFilterField(const char* fieldName, const char* oper, const ch
 	filter = buffer.GetString();
 
 }
-
+*/
 
 bool CGenTableRecord::GetColumn(short columnIndex, double& doubleval) const noexcept
 {
@@ -398,4 +638,22 @@ bool CGenTableRecord::GetColumn(const char* fieldName, CString& stringVal) const
 	USES_CONVERSION;
 	stringVal = A2W(resultDoc[fieldName].GetString());
 	return true;
+}
+const Value& CGenTableRecord::GetColumn(short columnIndex) const noexcept
+{
+	rapidjson::Value::ConstMemberIterator m_iter = resultDoc.MemberBegin();// primo campo dell'oggetto
+	m_iter += columnIndex - 1;
+	return m_iter->value;
+
+
+}
+
+const Value& CGenTableRecord::GetColumn(const char* fieldName) const noexcept
+{
+	return resultDoc[fieldName];
+	//rapidjson::Value::ConstMemberIterator m_iter = resultDoc.MemberBegin();// primo campo dell'oggetto
+	//m_iter += columnIndex - 1;
+	//return m_iter->value;
+
+
 }

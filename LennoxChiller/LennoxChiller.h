@@ -24,6 +24,8 @@ typedef int(__stdcall* PEBMPAPSTFAN_FNCT17)(char* KEY, char* SIZE, char* TYP, ch
 using namespace System;
 using namespace msclr::interop;
 using namespace rapidjson;
+using namespace std;
+
 
 CDataSource		g_Sql;
 CSession		g_session;
