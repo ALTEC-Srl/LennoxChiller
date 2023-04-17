@@ -24,7 +24,66 @@ PEBMPAPSTFAN_FNCT20 SET_XML_PATH_WS = NULL;
 
 using namespace LennoxRooftop;
 
+double Round(double val, int dec = 0)
+{
+	long a;
+	double esp = 1.0, valDec = 0;
+	int pos = 0;
+	for (int i = 1; i <= dec; esp *= 10, i++);
 
+	int meno = val < 0 ? -1.0 : 1.0;
+	val = fabs(val);
+	CString f, f1;
+	f1.Format(_T("%d"), dec);
+	f.Format(_T("%s%sf"), _T("%."), f1);
+	f1 = f;
+	f.Format(f, val);
+	if ((pos = f.Find(_T("."))) != -1)
+	{
+		double cip = _tstof(f.Mid(pos + 1)) / pow(10., dec);
+		double b = _tstof(f) + 0.001;
+		a = (long)(b - cip);
+		valDec = _tstof(f.Mid(pos + 1)) / pow(10., dec);
+		//a = val - valDec;
+
+	}
+	else
+	{
+		a = _tstol(f);
+		valDec = 0;
+	}
+	//a*=pow(10,dec);
+	double b = val * pow(10., dec);
+	//a = (unsigned long) (b);
+
+
+	if (val < 0)
+	{
+		if (b + (a + valDec) * pow(10., dec) < -0.5)
+		{
+			return (a + valDec);
+		}
+		else
+			return valDec + a - 1.0 / pow(10., dec);
+	}
+	else
+	{
+		if (meno < 0)
+		{
+			return meno * (a + valDec);
+		}
+		else
+		{
+			if ((b - (a + valDec) * pow(10., dec)) > 0.5 && meno > 0)
+			{
+				return 1.0 * a + valDec + 1.0 / pow(10., dec);
+			}
+			else
+				return 1.0 * a + valDec;
+		}
+	}
+
+}
 CString ExtractString(const CString& str, int* pos, const CString& c2seek = _T(";"), const CString& start = _T(""))
 {
 
@@ -379,11 +438,13 @@ String^ Rooftop::GetOptionsPressureDrop(String^ jSONIN)
 {
 	std::string str = marshal_as<std::string>(jSONIN);
 	// lettura dei risultati
+	String^ err;
 	Document doc;
 	doc.Parse(str.c_str());
+	double port[2] = { 0,0 };
 	CString model = doc["MODELID"].GetString();
-	double portex = doc["airflowexhaust"].GetDouble();
-	double portsup = doc["airflowsupply"].GetDouble();
+	port[1] = doc["airflowexhaust"].GetDouble();
+	port[0] = doc["airflowsupply"].GetDouble();
 	double td1 = doc["coiltempdb"].GetDouble();
 	double tw1 = doc["coiltempwb"].GetDouble();
 	double td2 = doc["coiltempposthdb"].GetDouble();
@@ -392,10 +453,68 @@ String^ Rooftop::GetOptionsPressureDrop(String^ jSONIN)
 	double tw3 = doc["coiltemppostcwb"].GetDouble();
 	int iqngn = doc["iqngn"].GetInt();
 
+	String^ jsoinrecordset;
 
+	//g_ModelTable.ResetFilter();
+	std::string filter;
+	
 
-	String^ err;
-	return  err;
+	CString code = L"";
+	long ripresa = 0,tipo = 0;
+	double pdc = 0;
+	double a = 0, b=0, c=0, d=0, e=0;
+
+	StringBuffer s;
+	Writer<StringBuffer> writer(s);
+
+	writer.StartObject();
+	writer.Key("result");
+	writer.StartObject();
+	writer.Key("supply");
+	writer.StartArray();
+	
+	for (int j = 0; j < 2; j++)
+	{
+		g_CoeffPdc.AddFilterField("Nomcomm", "=", model, filter);
+		g_CoeffPdc.AddFilterField("Flow_stream", "=", j, filter);
+		CGenRecordList options = g_CoeffPdc.GetRecordList(filter);
+		if (j == 1)
+		{
+			writer.StartObject();
+			writer.Key("return");
+			writer.StartArray();	
+		}
+		for (const auto currDLL : options)
+		{
+			CGenTableRecord option = currDLL.c_str();
+
+			option.GetColumn("SupplyDP_code", code);
+			option.GetColumn("a", a);
+			option.GetColumn("b", b);
+			option.GetColumn("c", c);
+			option.GetColumn("d", d);
+			option.GetColumn("e", e);
+			option.GetColumn("Type", tipo);
+			pdc = a * pow(port[j], 4) + b * pow(port[j], 3) + c * pow(port[j], 2), d* pow(port[j], 1) + e;
+			pdc = Round(pdc, 1);
+			//se type è > 0 si devono applicare delle formule diverse per il calcolo delle perdite di carico
+			/*if (type > 0)
+			{
+			}*/
+			
+			writer.StartObject();
+			writer.Key("options"); writer.String(code);
+			writer.Key("pressure");  writer.Double(pdc);
+			writer.EndObject();
+		}
+		writer.EndArray();
+		writer.EndObject();
+	}
+	writer.EndObject();
+
+	jsoinrecordset = gcnew String(s.GetString());
+	
+	return  jsoinrecordset;
 }
 String^ Rooftop::GetDrawing(String^ jSONIN) 
 {
@@ -414,30 +533,28 @@ bool Rooftop::Init()
 	TCHAR szPathProgramData[1024];
 	GetCurrentDirectory(1024, szPathProgramData);
 	CString path = CString(szPathProgramData);
-	::MessageBox(NULL, path, _T(""), MB_OK);
+	//::MessageBox(NULL, path, _T(""), MB_OK);
 	//String^ str = marshal_as <std::string> path;
 	//String^ boh = str;
-
-	l =  LoadModel();
+	l = OpenConnection();
+	l &= LoadModel();
+	l &= LoadCoeffPdc();
 	l &= LoadEBMDll();
 
 	SetCurrentDirectory(path); //setting path
-	::MessageBox(NULL, path, _T(""), MB_OK);
+	//::MessageBox(NULL, path, _T(""), MB_OK);
 	return l;
 }
-
-bool Rooftop::LoadModel()
+bool Rooftop::OpenConnection()
 {
 	HRESULT		hr;
-	
-
 	CString provider = "";
 	if (!OpenDataSource(CString("elencal.udl"), g_Sql, CString(""), CString("")))
 	{
-		MessageBox(NULL, _T("Unable to open session to SQL SERVER - Elencal.udl not found"),"ALTEC", MB_ICONWARNING);
+		MessageBox(NULL, _T("Unable to open session to SQL SERVER - Elencal.udl not found"), "ALTEC", MB_ICONWARNING);
 		return false;
 	}
-	
+
 	try
 	{
 		g_session.Open(g_Sql);
@@ -447,21 +564,6 @@ bool Rooftop::LoadModel()
 		DisplayOLEDBErrorRecords(hr);
 		return false;
 	}
-
-	/* test
-	CCommand< CDynamicAccessor > ModelRs;
-	hr = ModelRs.Open(g_session, L"SELECT * from RT2_B6_altec_definition");
-	if (!SUCCEEDED(hr) || hr == DB_E_NOTABLE)
-	{
-	}*/
-
-	CString datastr = L"SELECT RT2_definition.iddefinition, RT2_B6_altec_definition.* \
- FROM RT2_definition INNER JOIN RT2_B6_altec_definition ON RT2_definition.nomcomm = RT2_B6_altec_definition.Nomcomm";
-	if (g_ModelTable.LoadFromDB(g_session, datastr.AllocSysString(), false))
-		return true;
-	else
-		return false;
-
 
 	//VERSIONE CON ADO E ACCESSOR
 	/*HRESULT		hr;
@@ -481,7 +583,7 @@ bool Rooftop::LoadModel()
 	ADORecordset* pModelRs = NULL;
 
 	CModelAccessor modelAccessor;
-	IADORecordBinding* picRs = NULL;   // Interface Pointer declared.  
+	IADORecordBinding* picRs = NULL;   // Interface Pointer declared.
 
 	_variant_t vNull;
 	CoCreateInstance(RECGUID, NULL, CLSCTX_INPROC_SERVER, RECINTGUID, (LPVOID*)&pModelRs);
@@ -507,6 +609,29 @@ bool Rooftop::LoadModel()
 		pModelRs->get_EOF(&vbEOF);
 	}
 	pModelRs->Close();*/
+}
+
+bool Rooftop::LoadCoeffPdc()
+{
+	
+	CString datastr = L"SELECT RT2_Altec_dpcomposants.* FROM RT2_Altec_dpcomposants order by Nomcomm, Flow_stream";
+	if (g_CoeffPdc.LoadFromDB(g_session, datastr.AllocSysString(), false))
+		return true;
+	else
+		return false;
+
+}
+
+bool Rooftop::LoadModel()
+{
+
+	CString datastr = L"SELECT RT2_definition.iddefinition, RT2_B6_altec_definition.* \
+ FROM RT2_definition INNER JOIN RT2_B6_altec_definition ON RT2_definition.nomcomm = RT2_B6_altec_definition.Nomcomm order by Nomcomm";
+	if (g_ModelTable.LoadFromDB(g_session, datastr.AllocSysString(), false))
+		return true;
+	else
+		return false;
+
 
 	
 }

@@ -30,6 +30,7 @@ using namespace std;
 CDataSource		g_Sql;
 CSession		g_session;
 CGenTable       g_ModelTable;
+CGenTable       g_CoeffPdc;
 
 namespace LennoxRooftop {
 
@@ -67,6 +68,8 @@ namespace LennoxRooftop {
 		//ritorna un json creato con i dati di ritorno del recordset	
 		String^ SearchModel(CString model);
 		bool LoadModel();
+		bool LoadCoeffPdc();
+		bool OpenConnection();
 		bool OpenDataSource(CString fileName, CDataSource& ds, CString provider, CString pwd);
 		
 	};
