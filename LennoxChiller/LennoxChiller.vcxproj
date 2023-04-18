@@ -120,6 +120,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="GasVapore.h" />
     <ClInclude Include="GenTable.h" />
     <ClInclude Include="LennoxChiller.h" />
     <ClInclude Include="MSJetOleDb.h" />
@@ -128,6 +129,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AssemblyInfo.cpp" />
+    <ClCompile Include="GasVapore.cpp" />
     <ClCompile Include="Gentable.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
     </ClCompile>

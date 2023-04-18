@@ -189,8 +189,8 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
     // lettura dei risultati
     Document doc;
     doc.Parse(str.c_str());
-    CString model = doc["MODELID"].GetString();
-    int supplier = doc["SUPPLIERID"].GetInt();
+    CString model = doc["modelid"].GetString();
+    int supplier = doc["supplierid"].GetInt();
     double port = doc["airflow"].GetDouble()/3600.0;
 	CString fantype = doc["fantype"].GetString();
     double pTot = doc["optionsdp"].GetDouble();
@@ -437,14 +437,14 @@ String^ Rooftop::GetNoiseData1(String^ jSONIN)
 String^ Rooftop::GetOptionsPressureDrop(String^ jSONIN) 
 {
 	std::string str = marshal_as<std::string>(jSONIN);
-	// lettura dei risultati
-	String^ err;
 	Document doc;
 	doc.Parse(str.c_str());
+	int errorcode = 0;
+	//lettura json input
 	double port[2] = { 0,0 };
-	CString model = doc["MODELID"].GetString();
-	port[1] = doc["airflowexhaust"].GetDouble();
-	port[0] = doc["airflowsupply"].GetDouble();
+	CString model = doc["modelid"].GetString();
+	port[1] = doc["airflowexhaust"].GetDouble()/3600.0;
+	port[0] = doc["airflowsupply"].GetDouble()/3600.0;
 	double td1 = doc["coiltempdb"].GetDouble();
 	double tw1 = doc["coiltempwb"].GetDouble();
 	double td2 = doc["coiltempposthdb"].GetDouble();
@@ -453,9 +453,10 @@ String^ Rooftop::GetOptionsPressureDrop(String^ jSONIN)
 	double tw3 = doc["coiltemppostcwb"].GetDouble();
 	int iqngn = doc["iqngn"].GetInt();
 
-	String^ jsoinrecordset;
+	if (port[1] * port[0] == 0)
+		errorcode = 1; //portata = 0
 
-	//g_ModelTable.ResetFilter();
+	String^ jsoinrecordset;
 	std::string filter;
 	
 
@@ -464,6 +465,7 @@ String^ Rooftop::GetOptionsPressureDrop(String^ jSONIN)
 	double pdc = 0;
 	double a = 0, b=0, c=0, d=0, e=0;
 
+	//inizio scrittura json output
 	StringBuffer s;
 	Writer<StringBuffer> writer(s);
 
@@ -473,21 +475,23 @@ String^ Rooftop::GetOptionsPressureDrop(String^ jSONIN)
 	writer.Key("supply");
 	writer.StartArray();
 	
+
 	for (int j = 0; j < 2; j++)
 	{
+		filter = "";
 		g_CoeffPdc.AddFilterField("Nomcomm", "=", model, filter);
 		g_CoeffPdc.AddFilterField("Flow_stream", "=", j, filter);
+		//ricerco il modello e mandato o ripresa
 		CGenRecordList options = g_CoeffPdc.GetRecordList(filter);
 		if (j == 1)
 		{
-			writer.StartObject();
 			writer.Key("return");
 			writer.StartArray();	
 		}
 		for (const auto currDLL : options)
 		{
 			CGenTableRecord option = currDLL.c_str();
-
+			//per ogni record aggiungo un oggetto nell'array di mandata o ripresa nel json output
 			option.GetColumn("SupplyDP_code", code);
 			option.GetColumn("a", a);
 			option.GetColumn("b", b);
@@ -495,12 +499,87 @@ String^ Rooftop::GetOptionsPressureDrop(String^ jSONIN)
 			option.GetColumn("d", d);
 			option.GetColumn("e", e);
 			option.GetColumn("Type", tipo);
-			pdc = a * pow(port[j], 4) + b * pow(port[j], 3) + c * pow(port[j], 2), d* pow(port[j], 1) + e;
-			pdc = Round(pdc, 1);
+			
 			//se type è > 0 si devono applicare delle formule diverse per il calcolo delle perdite di carico
-			/*if (type > 0)
+			if (tipo == 1)
 			{
-			}*/
+				double Nfiltri = 1;
+				std::string filter1 = "";
+				g_ModelTable.AddFilterField("Nomcomm", "=", model, filter1);
+				CGenTableRecord filtri = g_CoeffPdc.Lookup(filter1);
+				long n1 = 1, n2 = 0;
+				filtri.GetColumn("Filter_quantity", n1);
+				filtri.GetColumn("Filter_quantity2", n2);
+				if (n1 + n2 == 0)
+				{
+					errorcode = 5;
+					n1 = 1;
+				}
+				port[j] /= (n1+n2);
+				
+			}
+			pdc = a * pow(port[j], 4) + b * pow(port[j], 3) + c * pow(port[j], 2) + d * port[j] + e;
+			pdc = Round(pdc, 1);
+			if (pdc <= 0)
+				errorcode = 2; 
+			if (pdc > 300)
+				errorcode = 3; 
+			CGas gas;
+			if (tipo == 2) //batteria calda preheating
+			{
+				double um = gas.ClUmRel(td1, tw1, 1.013);
+				double dens = gas.Densita(td1, um, 1.013);
+				double tmpDens = dens / 1.20433;
+				if (tmpDens <= 0)
+					errorcode = 6;
+				pdc = Round(pdc/ tmpDens, 1);
+			}
+			if (tipo == 4) //batteria fredda post heating (verifica estiva)
+			{
+				bool deumidificazione = 0;
+				if (deumidificazione)
+				{
+					double um = gas.ClUmRel(td3, tw3, 1.013);
+					double dens = gas.Densita(td3, um, 1.013);
+					double tmpDens = dens / 1.20433;
+					if (tmpDens <= 0)
+						errorcode = 6;
+					pdc = Round(pdc / tmpDens, 1);
+				}
+				else
+				{
+					//cerco la calda post heating 
+					std::string filter1 = "";
+					g_CoeffPdc.AddFilterField("Nomcomm", "=", model, filter1);
+					g_CoeffPdc.AddFilterField("Flow_stream", "=", j, filter1);
+					g_CoeffPdc.AddFilterField("Type", "=", 3, filter1);
+					//ricerco il modello e mandato o ripresa e batteria
+					CGenTableRecord caldapost = g_CoeffPdc.Lookup(filter1);
+					caldapost.GetColumn("a", a);
+					caldapost.GetColumn("b", b);
+					caldapost.GetColumn("c", c);
+					caldapost.GetColumn("d", d);
+					caldapost.GetColumn("e", e);
+
+					pdc = a * pow(port[j], 4) + b * pow(port[j], 3) + c * pow(port[j], 2) + d * port[j] + e;
+					pdc = Round(pdc, 1);
+					if (pdc <= 0)
+						errorcode = 2;
+					if (pdc > 300)
+						errorcode = 3;
+					tipo = 3;
+				}
+
+			}
+			if (tipo == 3) //batteria calda post heating
+			{	
+				double um = gas.ClUmRel(td2, tw2, 1.013);
+				double dens = gas.Densita(td2, um, 1.013);
+				double tmpDens = dens / 1.20433;
+				if (tmpDens <= 0)
+					errorcode = 6;
+				pdc = Round(pdc / tmpDens, 1);
+			}
 			
 			writer.StartObject();
 			writer.Key("options"); writer.String(code);
@@ -508,8 +587,11 @@ String^ Rooftop::GetOptionsPressureDrop(String^ jSONIN)
 			writer.EndObject();
 		}
 		writer.EndArray();
-		writer.EndObject();
+		
 	}
+	writer.Key("errorid"); writer.Int(errorcode);
+	writer.Key("version");  writer.String(VERSION);
+	writer.EndObject();
 	writer.EndObject();
 
 	jsoinrecordset = gcnew String(s.GetString());
@@ -564,6 +646,7 @@ bool Rooftop::OpenConnection()
 		DisplayOLEDBErrorRecords(hr);
 		return false;
 	}
+	return true;
 
 	//VERSIONE CON ADO E ACCESSOR
 	/*HRESULT		hr;

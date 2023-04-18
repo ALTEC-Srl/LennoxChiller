@@ -10,7 +10,9 @@
 #include "rapidjson\writer.h"
 #include "msjetoledb.h"
 #include "GenTable.h"
+#include "Gasvapore.h"
 
+#define VERSION "1.0.0.0"
 // Metodi per EBM 
 //typedef int (__stdcall *PEBMPAPSTFAN_FNCT6)(	char** in, char** out);
 typedef int(__stdcall* PEBMPAPSTFAN_FNCT1)	(char** in);

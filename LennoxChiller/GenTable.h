@@ -60,6 +60,7 @@ public:
 	void					AddFilterField(const char* fieldName, const char* oper, double value, std::string& filter, bool IsNullValid = false, long valoreor = -99) const noexcept;
 	void					AddFilterField(const char* fieldName, const char* oper, const char* value, std::string& filter, bool IsNullValid = false, long valoreor = -99) const noexcept;
 	bool					IsEmpty() const noexcept { return m_tableDataset.size() == 0; };
+	
 private:
 	Value	emptyValue;
 	std::vector<std::string> m_columnName;
