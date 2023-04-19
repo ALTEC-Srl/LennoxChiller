@@ -22,6 +22,7 @@ bool CGenTable::LoadFromDB(const CSession& session, const wchar_t* sqlExpression
 	long colCount = acc1.GetColumnCount();
 	for (short i = 1; i <= colCount; i++)
 	{
+		//::MessageBox(NULL, CString(acc1.GetColumnName(i)), _T("modello fan"), MB_OK);
 		m_columnName.push_back(CString(acc1.GetColumnName(i)).GetString());
 	}
 	
@@ -145,6 +146,7 @@ bool CGenTable::LoadFromDB(const CSession& session, const wchar_t* sqlExpression
 			
 		}
 		writer.EndObject();
+		//::MessageBox(NULL, buffer.GetString(), _T("modello fan"), MB_OK);
 		std::string output = buffer.GetString();
 		m_tableDataset.push_back(output); // sonRecord.; // .CopyFrom(jsonRecord, document.GetAllocator());
 		m_tableID_Pos_Dataset[IDtable] = m_tableDataset.size()-1;

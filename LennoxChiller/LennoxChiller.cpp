@@ -2,7 +2,6 @@
 #include "LennoxChiller.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
-CString m_fanEBM;
 
 HMODULE		g_EbmPapstFanDLL = NULL;
 PEBMPAPSTFAN_FNCT1	GET_PRODUCTS_PC = NULL;
@@ -23,6 +22,8 @@ PEBMPAPSTFAN_FNCT1  SET_XML_PATH = NULL;
 PEBMPAPSTFAN_FNCT20 SET_XML_PATH_WS = NULL;
 
 using namespace LennoxRooftop;
+
+CString g_elencoEBMJson;
 
 double Round(double val, int dec = 0)
 {
@@ -200,19 +201,22 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 
 	//recupero le informazioni nel database interno LENNOX in base all'idmodello richiesto
 	//ritorna un json creato con i dati di ritorno del recordset
-	String^ JSONmodelspecification = SearchModel(model);
+	String^ JSONmodelspecification = SearchModel(model, fantype);
 	std::string str1 = marshal_as<std::string>(JSONmodelspecification);
 	doc.Parse(str1.c_str());
-	Value& responseObj = doc["FANMODEL"];
+	Value& responseObj = doc["FANCODE"];
 	CString fanmodel = responseObj.GetString();
-	double maxWidth = doc["maxWidth"].GetDouble();
-	double maxHeigth = doc["maxHeigth"].GetDouble();
-	double euroventfactor = doc["euroventfactor"].GetDouble();
+	//fanmodel.Format ("%d", responseObj.GetInt());
+	double maxWidth = 10000; //doc["maxWidth"].GetDouble();
+	double maxHeigth = 10000;// doc["maxHeigth"].GetDouble();
+	/*double euroventfactor = doc["euroventfactor"].GetDouble();
 	double minport = doc["minairflow"].GetDouble();
 	double maxport = doc["maxairflow"].GetDouble();
 	double minpd = doc["mindp"].GetDouble();
-	double maxpd = doc["maxdp"].GetDouble();
+	double maxpd = doc["maxdp"].GetDouble();*/
 	
+	int errorcode = 0;
+
 	StringBuffer s;
 	bool calcok = false;
 
@@ -309,27 +313,48 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 				else
 					double m_l5A100 = 55;
 				calcok = true;
+				
+				//json output:
 				Writer<StringBuffer> writer(s);
 				writer.StartObject();
-				writer.Key("motorabsorbedpower"); writer.Double(m_kwfunz);
-				writer.Key("electricabsorbedpower"); writer.Double(m_kwmaxv);
-				writer.Key("RPM"); writer.Double(m_nfunzi);
-				double sfp = (m_kwmaxv / port) * 1000.0; //sfp W / m3 / s
-				writer.Key("sfp_class"); writer.Int(GetSFPClass(sfp));
-				writer.Key("sfp_value"); writer.Double(sfp);
-			
-				writer.Key("euroventfactor"); writer.Double(euroventfactor);
-				writer.Key("minairflow"); writer.Double(minport);
-				writer.Key("maxaiflow"); writer.Double(maxport);
-				writer.Key("mindp"); writer.Double(minpd);
-				writer.Key("maxdp"); writer.Double(maxpd);
-
-				writer.Key("supplysounddbA"); writer.Double(m_lw3Afu);
-				CString in, out;
-				in.Format("%.0f;%.0f;%.0f;%.0f;%.0f;%.0f;%.0f;%.0f", m_l7w006, m_l7w012, m_l7w025, m_l7w050, m_l7w100, m_l7w200, m_l7w400, m_l7w800);
-				out.Format("%.0f;%.0f;%.0f;%.0f;%.0f;%.0f;%.0f;%.0f", m_l6w006, m_l6w012, m_l6w025, m_l6w050, m_l6w100, m_l6w200, m_l6w400, m_l6w800);
-				writer.Key("noisespectruminlet"); writer.String(in);
-				writer.Key("noisespectrumoutlet"); writer.String(out);
+					writer.Key("result"); 
+					writer.StartObject();
+						writer.Key("performance");
+						writer.StartObject();
+						if (pTot > 0)
+						{
+							writer.Key("motorabspower"); writer.Double(m_kwfunz);
+							writer.Key("motorelecpower"); writer.Double(m_kwmaxv);
+							writer.Key("Rpm"); writer.Double(m_nfunzi);
+							double sfp = (m_kwmaxv / port) * 1000.0; //sfp W / m3 / s
+							writer.Key("sfp_class"); writer.Int(GetSFPClass(sfp));
+							writer.Key("sfp_value"); writer.Double(sfp);
+							writer.Key("supplynoise"); writer.Double(m_lw3Afu);
+						}
+						writer.EndObject();
+						writer.Key("configuration");
+						writer.StartObject();
+							/*writer.Key("fanname"); writer.String(fanmodel.GetString());
+							writer.Key("fanfactor"); writer.Double(m_kwmaxv);
+							writer.Key("keyfactor"); writer.Double(m_nfunzi);
+							writer.Key("weight"); writer.Int(GetSFPClass(sfp));
+							writer.Key("minairflow"); writer.Double(minport);
+							writer.Key("maxaiflow"); writer.Double(maxport);
+							writer.Key("mindp"); writer.Double(minpd);
+							writer.Key("maxdp"); writer.Double(maxpd);*/
+							
+						writer.EndObject();
+						writer.Key("noise");
+						writer.StartObject();
+							CString in, out;
+							in.Format("%.0f;%.0f;%.0f;%.0f;%.0f;%.0f;%.0f;%.0f", m_l7w006, m_l7w012, m_l7w025, m_l7w050, m_l7w100, m_l7w200, m_l7w400, m_l7w800);
+							out.Format("%.0f;%.0f;%.0f;%.0f;%.0f;%.0f;%.0f;%.0f", m_l6w006, m_l6w012, m_l6w025, m_l6w050, m_l6w100, m_l6w200, m_l6w400, m_l6w800);
+							writer.Key("inlet"); writer.String(in);
+							writer.Key("outlet"); writer.String(out);
+						writer.EndObject();
+					writer.EndObject();
+					writer.Key("erroid"); writer.Int(errorcode);
+					writer.Key("version"); writer.String(VERSION);
 				writer.EndObject();
 			}
 
@@ -506,7 +531,7 @@ String^ Rooftop::GetOptionsPressureDrop(String^ jSONIN)
 				double Nfiltri = 1;
 				std::string filter1 = "";
 				g_ModelTable.AddFilterField("Nomcomm", "=", model, filter1);
-				CGenTableRecord filtri = g_CoeffPdc.Lookup(filter1);
+				CGenTableRecord filtri = g_ModelTable.Lookup(filter1);
 				long n1 = 1, n2 = 0;
 				filtri.GetColumn("Filter_quantity", n1);
 				filtri.GetColumn("Filter_quantity2", n2);
@@ -629,7 +654,7 @@ bool Rooftop::Init()
 }
 bool Rooftop::OpenConnection()
 {
-	HRESULT		hr;
+	//HRESULT		hr;
 	CString provider = "";
 	if (!OpenDataSource(CString("elencal.udl"), g_Sql, CString(""), CString("")))
 	{
@@ -765,10 +790,10 @@ bool Rooftop::OpenDataSource(CString fileName, CDataSource& ds, CString provider
 	return true;
 
 }
-String^ Rooftop::SearchModel(CString model)
+String^ Rooftop::SearchModel(CString model, CString fantype)
 {
 	String^ jsoinrecordset;
-	
+
 	//g_ModelTable.ResetFilter();
 	std::string filter;
 	g_ModelTable.AddFilterField("Nomcomm", "=", model, filter);
@@ -777,11 +802,37 @@ String^ Rooftop::SearchModel(CString model)
 	if (!modello.IsValid())
 		return jsoinrecordset;
 
-	long val;
+	long nfan = 1;
 	CString test;
-	modello.GetColumn("C1_Outdoor_fan_airflow", val);
-	test.Format(_T("%d"), val);
-	::MessageBox(NULL, test, _T("modello fan"), MB_OK);
+	if (fantype.IsEmpty() || fantype == _T("STD"))
+	{
+		modello.GetColumn("Indoor_Fan_STD", test);
+		modello.GetColumn("Indoor_Qty_Fan_STD", nfan);
+	}
+	if (fantype == _T("SFHC"))
+	{
+		modello.GetColumn("Indoor_Fan_SFHC", test);
+		modello.GetColumn("Indoor_Qty_Fan_SFHC", nfan);
+	}
+	if (fantype == _T("SFLA"))
+	{
+		modello.GetColumn("Indoor_Fan_SFLA", test);
+		modello.GetColumn("Indoor_Qty_Fan_SFLA", nfan);
+	}
+	if (fantype == _T("SFHA"))
+	{
+		modello.GetColumn("Indoor_Fan_SFHA", test);
+		modello.GetColumn("Indoor_Qty_Fan_SFHA", nfan);
+	}
+	//cerco corrispondenza tra nome modello e codice articolo preso da dll:
+	std::string str = (g_elencoEBMJson);
+	::MessageBox(NULL, g_elencoEBMJson, _T("modello fan"), MB_OK);
+	Document doc;
+	doc.Parse(str.c_str());
+	CString codart = doc[test.GetString()].GetString();
+
+	//test.Format(_T("%d"), val);
+	//::MessageBox(NULL, test, _T("modello fan"), MB_OK);
 
 	//CString test = "176408";
 	
@@ -790,17 +841,13 @@ String^ Rooftop::SearchModel(CString model)
 
 	writer.StartObject();
 	writer.Key("FANMODEL"); writer.String(test);
-	writer.Key("maxWidth"); writer.Double(10000);
-	writer.Key("maxHeigth"); writer.Double(10000);
-	writer.Key("euroventfactor"); writer.Double(0);
-	writer.Key("minairflow"); writer.Double(0.1);
-	writer.Key("maxairflow"); writer.Double(5);
-	writer.Key("mindp"); writer.Double(0);
-	writer.Key("maxdp"); writer.Double(1000);
+	writer.Key("FANCODE"); writer.String(codart);
+	writer.Key("FANNUMBER"); writer.Int(nfan);
+
 	writer.EndObject();
 	
 	jsoinrecordset = gcnew String(s.GetString());
-	
+	::MessageBox(NULL, s.GetString(), _T("modello fan"), MB_OK);
 	//"{\"FANMODEL\": \"176408\",""maxWidth"": 10000, ""maxHeigth"": 10000, ""euroventfactor"": 0, ""minairflow"": 0.2, ""maxairflow"": 4, ""mindp"": 20, ""maxdp"": 800}";
 	
 	return jsoinrecordset;
@@ -833,9 +880,9 @@ bool Rooftop::LoadEBMDll()
 
 	USES_CONVERSION;
 	
-
+	CString fanEBM;
 	CString temp = ("\\data\\plug_fans");
-	char path33[MAX_PATH + 1];
+	//char path33[MAX_PATH + 1];
 
 
 	//typedef int (__stdcall *PEBMPAPSTFAN_FNCT1)( char** buffer );
@@ -893,7 +940,7 @@ bool Rooftop::LoadEBMDll()
 		char cMBBuffer2[4001];
 		ZeroMemory(&cMBBuffer2, 4001 * sizeof(char));	char* pBuffer = &cMBBuffer2[0];
 		int num2 = GET_PRODUCTS_PC(&pBuffer);
-		m_fanEBM = A2W(cMBBuffer2);
+		fanEBM = A2W(cMBBuffer2);
 	}
 
 	GET_CALCULATION_FAN_ALONE_PC = (PEBMPAPSTFAN_FNCT6)GetProcAddress(g_EbmPapstFanDLL, "GET_CALCULATION_FAN_ALONE_PC");
@@ -908,7 +955,39 @@ bool Rooftop::LoadEBMDll()
 				
 		return false;
 	}
-	
+	int pos1 = 0;
+	char* cMBOut = new char[2001];
+	g_elencoEBMJson = _T("");
+	StringBuffer s;
+	Writer<StringBuffer> writer(s);
+	writer.StartObject();
+
+	while (true)
+	{
+		CString fan = ExtractString(fanEBM, &pos1, _T(";"));
+		if (fan.IsEmpty())
+			break;
+		err = GET_TECHNICAL_DATA_PC((fan.GetBuffer(0)), &cMBOut);	// MV 13.05.2014. Per utilizzare la nuova DLL 3.0.1.0
+		//CString cip = cMBOut;
+		// La riga dopo crea i dati tecnici per singolo ventilatore
+		//TRACE(_T("%s;%s"), fan,cip);TRACE(_T("\n"));
+		CString fan1 = ExtractString(fanEBM, &pos1, _T(";"));
+
+		//::MessageBox(NULL, fan1, _T("modello fan"), MB_OK);
+		//::MessageBox(NULL, fan, _T("modello fan"), MB_OK);
+		// la riga dopo crea i codici articolo
+		//TRACE(_T("%s;%s-%s-%s ;%s\n"), fan, fan1.Left(6), fan1.Mid(6, 4), fan1.Mid(10, 2), fan1);
+		
+		
+		writer.Key(fan1); writer.String(fan);
+		
+	}
+
+	writer.EndObject();
+	g_elencoEBMJson = gcnew String(s.GetString());
+
+	SAFE_ARRAY_DELETE(cMBOut);
+
 	SEARCH_PRODUCTS = (PEBMPAPSTFAN_FNCT6)GetProcAddress(g_EbmPapstFanDLL, "SEARCH_PRODUCTS");
 
 	if (!SEARCH_PRODUCTS)

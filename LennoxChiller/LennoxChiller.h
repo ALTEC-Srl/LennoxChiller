@@ -68,7 +68,7 @@ namespace LennoxRooftop {
 		short GetSFPClass(double sfp);
 		//recupero le informazioni nel database interno LENNOX in base all'idmodello richiesto
 		//ritorna un json creato con i dati di ritorno del recordset	
-		String^ SearchModel(CString model);
+		String^ SearchModel(CString model, CString fantype);
 		bool LoadModel();
 		bool LoadCoeffPdc();
 		bool OpenConnection();
