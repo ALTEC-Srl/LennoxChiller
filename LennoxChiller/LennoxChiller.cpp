@@ -504,8 +504,74 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 }
 String^ Rooftop::GetNoiseData(String^ jSONIN) 
 {
-	String^ err;
-	return  err;
+	std::string str = marshal_as<std::string>(jSONIN);
+	Document doc;
+	doc.Parse(str.c_str());
+	int errorcode = 0;
+
+	//lettura json input
+	double port[3] = { 0,0,0 };
+	double pdc[3] = { 0,0,0 };
+	CString model = doc["modelid"].GetString();
+	int supplier = doc["supplierid"].GetInt();
+
+	CString fantypesupply = doc["fantypesupply"].GetString();
+	CString fantypeexhaust = doc["fantypeexhaust"].GetString();
+	CString fantypeoutdoor = doc["fantypeoutdoor"].GetString();
+	
+	port[1] = doc["airflowexhaust"].GetDouble() / 3600.0;
+	port[0] = doc["airflowsupply"].GetDouble() / 3600.0;
+	port[2] = doc["airflowoutdoor"].GetDouble() / 3600.0;
+
+	pdc[1] = doc["staticdpexh"].GetDouble();
+	pdc[0] = doc["staticdpsup"].GetDouble();
+	pdc[2] = doc["staticdpout"].GetDouble();
+
+	double distance = doc["distance"].GetDouble();
+	double dens = doc["density"].GetDouble();
+	double temperature = doc["temperature"].GetDouble();
+
+	CString noisesupplyin = doc["noisesupplyin"].GetString();
+	CString noisesupplyout = doc["noisesupplyout"].GetString();
+	CString noiseretin = doc["noiseretin"].GetString();
+	CString noiseretout = doc["noiseretout"].GetString();
+	CString noiseoutin = doc["noiseoutin"].GetString();
+	CString noiseoutout = doc["noiseoutout"].GetString();
+
+	
+	int iqngn = doc["iqngn"].GetInt();
+	int presnoiselevel = 0;
+	CString outdoorband = "", supinband = "", supoutband = "", retinband = "", retoutband = "", Outdoorband_noex = "", supinband_noex = "", supoutband_noex = "", retinband_noex = "", retoutband_noex = "";
+
+	StringBuffer s;
+	Writer<StringBuffer> writer(s);
+
+	writer.StartObject();
+	writer.Key("result");
+	writer.StartObject();
+	
+	writer.Key("outdoorband"); writer.String(outdoorband);
+	writer.Key("supinband"); writer.String(supinband);
+	writer.Key("supoutband"); writer.String(supoutband);
+	writer.Key("retinband"); writer.String(retinband);
+	writer.Key("retoutband"); writer.String(retoutband);
+	writer.Key("Outdoorband_noex"); writer.String(Outdoorband_noex);
+	writer.Key("supinband_noex"); writer.String(supinband_noex);
+	writer.Key("supoutband_noex"); writer.String(supoutband_noex);
+	writer.Key("retinband_noex"); writer.String(retinband_noex);
+	writer.Key("retoutband_noex"); writer.String(retoutband_noex);
+	writer.Key("outdoorband"); writer.Int(presnoiselevel);
+	
+	writer.Key("errorid"); writer.Int(errorcode);
+	writer.Key("version");  writer.String(VERSION);
+	
+	writer.EndObject();
+	writer.EndObject();
+
+
+	String^ jsoinrecordset;
+	jsoinrecordset = gcnew String(s.GetString());
+	return  jsoinrecordset;
 }
 String^ Rooftop::GetNoiseData1(String^ jSONIN) 
 {
