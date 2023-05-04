@@ -18,7 +18,7 @@
 #include <afxtempl.h>		// MFC Template classes
 
 
-constexpr long lenRis = 40000;
+constexpr long lenRis = 1000000;
 
 #define SAFE_DELETE(x)			{ if((x)){delete (x); (x)=NULL;} }  
 #define SAFE_ARRAY_DELETE(x)	{ if((x)){delete[] (x); (x)=NULL;} }

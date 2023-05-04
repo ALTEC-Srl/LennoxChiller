@@ -207,7 +207,7 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 	Value& responseObj = doc["FANCODE"];
 	CString fanmodel = responseObj.GetString();
 	int nfan = doc["FANNUMBER"].GetInt();
-	
+	CString fanname = doc["FANMODEL"].GetString();
 	
 	//da recuperare in tabella ALTEC_definition?? gf 21-04-23
 	double maxWidth = 10000; //doc["maxWidth"].GetDouble();
@@ -277,7 +277,7 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 		char cMBOut[4001]; ZeroMemory(cMBOut, 4001 * sizeof(char)); char* pRis = &cMBOut[0];
 		int err = 999;
 
-		CString ventRis;
+		CString ventRis, ventRis1;
 		sprintf_s(cMBBuffer, 4000, "%s", fanmodel.GetString());
 
 		err = GET_TECHNICAL_DATA_PC(cMBBuffer, &pRis);	// MV 10.06.2014. Per utilizzare la nuova DLL 3.0.1.0
@@ -343,6 +343,7 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 			//cerco la massima pressione per la portata passata
 			if (port > 0)
 			{
+				double port1 = port / nfan;
 				double pressh = maxpd;
 				double pressl = 0;
 				double presss = (pressl + pressh) / 2.0;
@@ -373,9 +374,68 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 		}
 		if (pTot > 0 && port > 0)
 		{
-			port /= nfan;
+			if (nfan > 1)
+			{
+				short backFlow = 1;
+				short oneSizePerGroup = 0;
+				short filterWH = 1;
+				short ignoreTooLarge = 1;
+				short json = 1;
+				long hoursperyear = 100000;
+				double portataS = port;
+				short numRedFan = 0;
+				INT num = 0; char cMBBufferS[4000];	cMBBufferS[3999] = 0;
+				sprintf_s(cMBBufferS, 4000, "%.0f;%.0f;%d;;;;;;;;;;;;;%d;%.0f;%.0f;%s;%d;%d;%d;;%s;%s;%s;%.2f;0;%.2f;%s;%d;%s;;;2;0;", 
+					portataS,
+					pTot,
+					hoursperyear,
+					numRedFan,
+					maxWidth,
+					maxHeigth,
+					backFlow == 1 ? _T("T") : _T("F"),
+					nfan, // 20
+					nfan, // 21
+					nfan, //22
+					oneSizePerGroup == 1 ? _T("T") : _T("F"),// 24
+					filterWH == 1 ? _T("T") : _T("F"),// 25
+					ignoreTooLarge == 1 ? _T("T") : _T("F"),// 26
+					dens, temperature,
+					json == 1 ? _T("T") : _T("F"),// 26
+					lenRis,
+					"");
+				char* pSelectionResult = new(char[lenRis]);
+				if (pSelectionResult)
+				{
+					memset(pSelectionResult, 0, lenRis * sizeof(char));
+					num = CALCULATE_FANGRID(cMBBufferS, &pSelectionResult);
+					ventRis1 = pSelectionResult;
+					std::string strEBMFANWALL = ventRis1;
+					// lettura dei risultati
+					Document docEbm;
+					docEbm.Parse(strEBMFANWALL.c_str());
+					CString chiave = fanmodel + " " + fanname; 
+					Value& responseObj = docEbm[chiave.GetString()];
+					//Value& responseObj1 
+					CString nfantest = responseObj["NoFans"].GetString();
+					//double testrum = responseObj1["63"].GetDouble();
 
-			sprintf_s(cMBBuffer, 4000, "%s;0;0;%.4f;;%.2f;%.4f;%.4f;%.2f;%.2f;ebmpapst;0;F;4000", fanmodel.GetString(), dens, temperature, press, port, maxWidth, maxHeigth);
+					::MessageBox(NULL, nfantest.Left(5000), _T(""), MB_OK);
+
+					//CString model = doc["modelid"].GetString();
+
+				}
+				else
+					errorcode = 89;
+
+				delete[] pSelectionResult;
+
+			}
+			
+
+
+			double port1 = port / nfan;
+
+			sprintf_s(cMBBuffer, 4000, "%s;0;0;%.4f;;%.2f;%.4f;%.4f;%.2f;%.2f;ebmpapst;0;F;4000", fanmodel.GetString(), dens, temperature, press, port1, maxWidth, maxHeigth);
 
 
 			errorcode = err = GET_CALCULATION_FAN_ALONE_PC(&cMBBuffer[0], &pRis);	// MV 10.06.2014. Per versione nuova DLL 3.0.1.0
