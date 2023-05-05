@@ -22,6 +22,7 @@ typedef int(__stdcall* PEBMPAPSTFAN_FNCT6)	(char* in, char** out);		// MV 10.06.
 typedef int(__stdcall* PEBMPAPSTFAN_FNCT18)(char* in, char** out);		// MV 10.06.2014. Per utilizzare la DLL nuova 3.0.1.0
 typedef int(__stdcall* PEBMPAPSTFAN_FNCT7)	(int s1, int s2, double* input, char* key, int z1, int z2, double* output);
 typedef int(__stdcall* PEBMPAPSTFAN_FNCT17)(char* KEY, char* SIZE, char* TYP, char* ISOCLASS, char* PROTECTION, int z1, int z2, double* OUTPUT);
+typedef int(__stdcall* PEBMPAPSTFAN_FNCT30)(wchar_t* in);
 
 using namespace System;
 using namespace msclr::interop;

@@ -20,7 +20,8 @@ PEBMPAPSTFAN_FNCT6	CALCULATE_FANGRID = NULL;
 PEBMPAPSTFAN_FNCT2	GET_DLL_VERSION = NULL;
 PEBMPAPSTFAN_FNCT1  SET_XML_PATH = NULL;
 PEBMPAPSTFAN_FNCT20 SET_XML_PATH_WS = NULL;
-
+PEBMPAPSTFAN_FNCT30 SET_DECIMALSEPARATOR = NULL;
+ 
 using namespace LennoxRooftop;
 
 CString g_elencoEBMJson;
@@ -270,6 +271,8 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 	if (supplier == 1) // EBM
 	{
 
+		
+
 		CString request;
 		INT num = 0;
 		double press = pTot;
@@ -374,15 +377,16 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 		}
 		if (pTot > 0 && port > 0)
 		{
+			bool fangrid = false;
 			if (nfan > 1)
 			{
 				short backFlow = 1;
 				short oneSizePerGroup = 0;
-				short filterWH = 1;
+				short filterWH = 0;
 				short ignoreTooLarge = 1;
 				short json = 1;
 				long hoursperyear = 100000;
-				double portataS = port;
+				double portataS = port*3600.0;
 				short numRedFan = 0;
 				INT num = 0; char cMBBufferS[4000];	cMBBufferS[3999] = 0;
 				sprintf_s(cMBBufferS, 4000, "%.0f;%.0f;%d;;;;;;;;;;;;;%d;%.0f;%.0f;%s;%d;%d;%d;;%s;%s;%s;%.2f;0;%.2f;%s;%d;%s;;;2;0;", 
@@ -408,91 +412,144 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 				{
 					memset(pSelectionResult, 0, lenRis * sizeof(char));
 					num = CALCULATE_FANGRID(cMBBufferS, &pSelectionResult);
-					ventRis1 = pSelectionResult;
-					std::string strEBMFANWALL = ventRis1;
-					// lettura dei risultati
-					Document docEbm;
-					docEbm.Parse(strEBMFANWALL.c_str());
-					CString chiave = fanmodel + " " + fanname; 
-					Value& responseObj = docEbm[chiave.GetString()];
-					//Value& responseObj1 
-					CString nfantest = responseObj["NoFans"].GetString();
-					//double testrum = responseObj1["63"].GetDouble();
+					if (num > 0)
+					{
+						ventRis1 = pSelectionResult;
+						
+						std::string strEBMFANWALL = ventRis1;
+						// lettura dei risultati
+						Document docEbm;
+						docEbm.Parse(strEBMFANWALL.c_str());
+						CString chiave = fanmodel + " " + fanname;
+						Value& responseObj = docEbm[chiave.GetString()];
+						if (responseObj.IsObject())
+						{
+							Value& responseObj1 = responseObj["OP_0"];
+							ASSERT(responseObj1.IsArray());
+							if (responseObj1.IsArray())
+							{
+								Value& performance = responseObj1[0]; //prendo solo la posizione 0
+								nfunzi = _tstof(performance["n [1/min]"].GetString());
+								
+								kwfunz = _tstof(performance["P_ed [W]"].GetString())/1000.0;
+								etasta = _tstof(performance["ETA_esd [%]"].GetString());
+								ufunzi = _tstof(performance["Uctrl [V]"].GetString());//voltaggio controllo
+								ptotfu = _tstof(performance["PTOT [Pa]"].GetString());//pressione totale
+								efftot = _tstof(performance["ETA_ed [%]"].GetString()); //eta R
+								effsta = _tstof(performance["ETA_esd [%]"].GetString()); //eta SR
+								sfp = _tstof(performance["SFP [kW/(m^3/s)]"].GetString()); 
+								pdynfu = ptotfu - pTot;
+								pstafu = pTot;
 
-					::MessageBox(NULL, nfantest.Left(5000), _T(""), MB_OK);
+								Value& responseObj2 = performance["Lwss"];
+								lw7Afu = _tstof(responseObj2["LwA"].GetString());
+								l7w006 = _tstof(responseObj2["63"].GetString());
+								l7w012 = _tstof(responseObj2["125"].GetString());
+								l7w025 = _tstof(responseObj2["250"].GetString());
+								l7w050 = _tstof(responseObj2["500"].GetString());
+								l7w100 = _tstof(responseObj2["1000"].GetString());
+								l7w200 = _tstof(responseObj2["2000"].GetString());
+								l7w400 = _tstof(responseObj2["4000"].GetString());
+								l7w800 = _tstof(responseObj2["8000"].GetString());
 
-					//CString model = doc["modelid"].GetString();
+								responseObj2 = performance["Lwps"];
 
+								lw6Afu = _tstof(responseObj2["LwA"].GetString());
+								l6w006 = _tstof(responseObj2["63"].GetString());
+								l6w012 = _tstof(responseObj2["125"].GetString());
+								l6w025 = _tstof(responseObj2["250"].GetString());
+								l6w050 = _tstof(responseObj2["500"].GetString());
+								l6w100 = _tstof(responseObj2["1000"].GetString());
+								l6w200 = _tstof(responseObj2["2000"].GetString());
+								l6w400 = _tstof(responseObj2["4000"].GetString());
+								l6w800 = _tstof(responseObj2["8000"].GetString());
+
+								fangrid = true;
+							}
+							else
+							{
+								errorcode = 93;
+							}
+						}
+						else
+						{
+							errorcode = 92;
+						}
+					}
+					else
+					{
+						errorcode = 91;
+					}
 				}
 				else
-					errorcode = 89;
-
+				{
+					errorcode = 90;
+				}
 				delete[] pSelectionResult;
-
 			}
 			
 
-
-			double port1 = port / nfan;
-
-			sprintf_s(cMBBuffer, 4000, "%s;0;0;%.4f;;%.2f;%.4f;%.4f;%.2f;%.2f;ebmpapst;0;F;4000", fanmodel.GetString(), dens, temperature, press, port1, maxWidth, maxHeigth);
-
-
-			errorcode = err = GET_CALCULATION_FAN_ALONE_PC(&cMBBuffer[0], &pRis);	// MV 10.06.2014. Per versione nuova DLL 3.0.1.0
-			if (err == 0)
+			if (!fangrid)
 			{
-				ventRis = cMBOut;
-				int pos1 = 0;
-				ventRis.Replace(_T(","), _T("."));
-				nfunzi = _tstof(ExtractString(ventRis, &pos1, _T(";")));
-				kwfunz = _tstof(ExtractString(ventRis, &pos1, _T(";"))) / 1000.0 * nfan;
-				phifun = _tstof(ExtractString(ventRis, &pos1, _T(";")));//corrente ampere
-				etasta = _tstof(ExtractString(ventRis, &pos1, _T(";")));
+				double port1 = port / nfan;
 
-				ufunzi = _tstof(ExtractString(ventRis, &pos1, _T(";")));//voltaggio controllo
-				ExtractString(ventRis, &pos1, _T(";")); // momento di inerzia
-				lw5Afu = _tstof(ExtractString(ventRis, &pos1, _T(";"))); // efficienza motore
-				lw3Afu = _tstof(ExtractString(ventRis, &pos1, _T(";"))); //potenza sonora db
-				lw7Afu = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db ingr
-				lw6Afu = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db out
-				l7w006 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db ingr
-				l7w012 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db ingr
-				l7w025 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db ingr
-				l7w050 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db ingr
-				l7w100 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db ingr
-				l7w200 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db ingr
-				l7w400 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db ingr
-				l7w800 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db ingr
-				l6w006 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db out
-				l6w012 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db out
-				l6w025 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db out
-				l6w050 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db out
-				l6w100 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db out
-				l6w200 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db out
-				l6w400 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db out
-				l6w800 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db out
-				ptotfu = _tstof(ExtractString(ventRis, &pos1, _T(";")));//pressione totale
-				CString temp;
-				temp = ExtractString(ventRis, &pos1, _T(";")); //pressione statica
-				temp = ExtractString(ventRis, &pos1, _T(";")); //portata
-				temp = ExtractString(ventRis, &pos1, _T(";")); //rendimento statico
-				temp = ExtractString(ventRis, &pos1, _T(";")); //Po Watt
-				efftot = _tstof(ExtractString(ventRis, &pos1, _T(";"))); //eta R
-				effsta = _tstof(ExtractString(ventRis, &pos1, _T(";"))); //eta SR
-				temp = ExtractString(ventRis, &pos1, _T(";")); //(safety factor rpm [%])
-				sfp = _tstof(ExtractString(ventRis, &pos1, _T(";"))); //(specific fan power[kW / (m3 / s)])
-				l5A050 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//(pressure inlet nozzle [Pa] (rough estimate))
-				temp = ExtractString(ventRis, &pos1, _T(";")); //(safety factor rpm [%])
-				//pData->m_l5A050 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//(pressure inlet nozzle [Pa] (rough estimate))
-				temp = ExtractString(ventRis, &pos1, _T(";")); //(pd[Pa])
-				//temp = ExtractString(ventRis, &pos1, _T(";")); //Pressure loss with respect to installation space [Pa])
-				pdynfu = ptotfu - pTot;
-				pstafu = pTot;
+				sprintf_s(cMBBuffer, 4000, "%s;0;0;%.4f;;%.2f;%.4f;%.4f;%.2f;%.2f;ebmpapst;0;F;4000", fanmodel.GetString(), dens, temperature, press, port1, maxWidth, maxHeigth);
 
+
+				errorcode = err = GET_CALCULATION_FAN_ALONE_PC(&cMBBuffer[0], &pRis);	// MV 10.06.2014. Per versione nuova DLL 3.0.1.0
+				if (err == 0)
+				{
+					ventRis = cMBOut;
+					int pos1 = 0;
+					ventRis.Replace(_T(","), _T("."));
+					nfunzi = _tstof(ExtractString(ventRis, &pos1, _T(";")));
+					kwfunz = _tstof(ExtractString(ventRis, &pos1, _T(";"))) / 1000.0 * nfan;
+					phifun = _tstof(ExtractString(ventRis, &pos1, _T(";")));//corrente ampere
+					efftot = _tstof(ExtractString(ventRis, &pos1, _T(";")));
+
+					ufunzi = _tstof(ExtractString(ventRis, &pos1, _T(";")));//voltaggio controllo
+					ExtractString(ventRis, &pos1, _T(";")); // momento di inerzia
+					lw5Afu = _tstof(ExtractString(ventRis, &pos1, _T(";"))); // efficienza motore
+					lw3Afu = _tstof(ExtractString(ventRis, &pos1, _T(";"))); //potenza sonora db
+					lw7Afu = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db ingr
+					lw6Afu = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db out
+					l7w006 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db ingr
+					l7w012 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db ingr
+					l7w025 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db ingr
+					l7w050 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db ingr
+					l7w100 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db ingr
+					l7w200 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db ingr
+					l7w400 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db ingr
+					l7w800 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db ingr
+					l6w006 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db out
+					l6w012 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db out
+					l6w025 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db out
+					l6w050 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db out
+					l6w100 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db out
+					l6w200 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db out
+					l6w400 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db out
+					l6w800 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//potenza sonora db out
+					ptotfu = _tstof(ExtractString(ventRis, &pos1, _T(";")));//pressione totale
+					CString temp;
+					temp = ExtractString(ventRis, &pos1, _T(";")); //pressione statica
+					temp = ExtractString(ventRis, &pos1, _T(";")); //portata
+					effsta = _tstof(ExtractString(ventRis, &pos1, _T(";"))); //rendimento statico
+					temp = ExtractString(ventRis, &pos1, _T(";")); //Po Watt
+					temp = ExtractString(ventRis, &pos1, _T(";")); //eta R
+					temp = ExtractString(ventRis, &pos1, _T(";")); //eta SR
+					temp = ExtractString(ventRis, &pos1, _T(";")); //(safety factor rpm [%])
+					sfp = _tstof(ExtractString(ventRis, &pos1, _T(";"))); //(specific fan power[kW / (m3 / s)])
+					l5A050 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//(pressure inlet nozzle [Pa] (rough estimate))
+					temp = ExtractString(ventRis, &pos1, _T(";")); //(safety factor rpm [%])
+					//pData->m_l5A050 = _tstof(ExtractString(ventRis, &pos1, _T(";")));//(pressure inlet nozzle [Pa] (rough estimate))
+					temp = ExtractString(ventRis, &pos1, _T(";")); //(pd[Pa])
+					//temp = ExtractString(ventRis, &pos1, _T(";")); //Pressure loss with respect to installation space [Pa])
+					pdynfu = ptotfu - pTot;
+					pstafu = pTot;
+
+				}
 			}
 		}
-
-	
 	}
 
 exit:
@@ -1252,6 +1309,14 @@ bool Rooftop::LoadEBMDll()
 	GET_GRAPH_POWER_PC = (PEBMPAPSTFAN_FNCT6)GetProcAddress(g_EbmPapstFanDLL, "GET_GRAPH_POWER_PC");
 	GET_GRAPH_SOUND_PC = (PEBMPAPSTFAN_FNCT6)GetProcAddress(g_EbmPapstFanDLL, "GET_GRAPH_SOUND_PC");
 	GET_STANDARDS_FANMOTOR = (PEBMPAPSTFAN_FNCT17)GetProcAddress(g_EbmPapstFanDLL, "GET_STANDARDS_FANMOTOR");;
+	SET_DECIMALSEPARATOR = (PEBMPAPSTFAN_FNCT30)GetProcAddress(g_EbmPapstFanDLL, "SET_DECIMALSEPARATOR");
+	int test1 = 0;
+	temp.Format(_T("."));
+	
+	if (SET_DECIMALSEPARATOR)
+	{
+		test1 = SET_DECIMALSEPARATOR(A2W(temp));
+	}
 	if (!GET_STANDARDS_FANMOTOR)
 	{
 
