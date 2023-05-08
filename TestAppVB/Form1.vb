@@ -12,9 +12,11 @@ Public Class Form1
         Dim Input As String
         Dim output As String
         If init Then
-            Input = "{""modelid"": ""B6FHC025SP1M"",""supplierid"": 1, ""fantype"": """", ""airflow"": 5000, ""optionsdp"": 200, ""density"": 1.2, ""temperature"": 20, ""iqngn"": 0}"
+            Input = "{""modelid"": ""B6FHC025SP1M"",""supplierid"": 1, ""fantype"": ""EAFA"", ""airflow"": 12000, ""optionsdp"": 100, ""density"": 1.2, ""temperature"": 20, ""iqngn"": 0}"
             output = chiller.GetFanPerformance(Input)
             MsgBox(output)
+
+
         End If
     End Sub
 

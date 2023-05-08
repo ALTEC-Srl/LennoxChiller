@@ -200,23 +200,32 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 	double temperature = doc["temperature"].GetDouble();
 	int iqngn = doc["iqngn"].GetInt();
 
+	int errorcode = 0;
+	StringBuffer s;
+	CString fanmodel = "";
+	CString fanname = "";
+	std::string str1 = "";
 	//recupero le informazioni nel database interno LENNOX in base all'idmodello richiesto
 	//ritorna un json creato con i dati di ritorno del recordset
-	String^ JSONmodelspecification = SearchModel(model, fantype);
-	std::string str1 = marshal_as<std::string>(JSONmodelspecification);
+	String^ JSONmodelspecification = SearchModel(model, fantype, port*3600.0);
+	if (CString(JSONmodelspecification).IsEmpty())
+	{
+		errorcode = 2;
+		goto exit;
+	}
+	str1 = marshal_as<std::string>(JSONmodelspecification);
 	doc.Parse(str1.c_str());
 	Value& responseObj = doc["FANCODE"];
-	CString fanmodel = responseObj.GetString();
+	fanmodel = responseObj.GetString();
 	int nfan = doc["FANNUMBER"].GetInt();
-	CString fanname = doc["FANMODEL"].GetString();
+	 fanname = doc["FANMODEL"].GetString();
 	
 	//da recuperare in tabella ALTEC_definition?? gf 21-04-23
 	double maxWidth = 10000; //doc["maxWidth"].GetDouble();
 	double maxHeigth = 10000;// doc["maxHeigth"].GetDouble();
 	
 	
-	int errorcode = 0;
-	StringBuffer s;
+	
 
 	if (fanmodel.IsEmpty() || nfan <= 0)
 	{
@@ -497,7 +506,7 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 
 
 				errorcode = err = GET_CALCULATION_FAN_ALONE_PC(&cMBBuffer[0], &pRis);	// MV 10.06.2014. Per versione nuova DLL 3.0.1.0
-				if (err == 0)
+				if (err == 0 || err == -8 || err == -7)
 				{
 					ventRis = cMBOut;
 					int pos1 = 0;
@@ -551,7 +560,10 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 			}
 		}
 	}
-
+	else
+	{
+		errorcode = 11;
+	}
 exit:
 	//json output:
 	Writer<StringBuffer> writer(s);
@@ -574,7 +586,7 @@ exit:
 			writer.EndObject();
 			writer.Key("configuration");
 			writer.StartObject();
-			if (errorcode == 0)
+			//if (errorcode == 0)
 			{
 				writer.Key("fanname"); writer.String(fanmodel.GetString());
 				double formula = 0;
@@ -715,7 +727,7 @@ String^ Rooftop::GetOptionsPressureDrop(String^ jSONIN)
 	int iqngn = doc["iqngn"].GetInt();
 
 	
-	if (port[1] * port[0] == 0)
+	if (port[1] * port[0] <= 0)
 		errorcode = 1; //portata = 0
 
 	String^ jsoinrecordset;
@@ -772,7 +784,7 @@ String^ Rooftop::GetOptionsPressureDrop(String^ jSONIN)
 				long n1 = 1, n2 = 0;
 				filtri.GetColumn("Filter_quantity", n1);
 				filtri.GetColumn("Filter_quantity2", n2);
-				if (n1 + n2 == 0)
+				if (n1 + n2 <= 0)
 				{
 					errorcode = 5;
 					n1 = 1;
@@ -1027,7 +1039,7 @@ bool Rooftop::OpenDataSource(CString fileName, CDataSource& ds, CString provider
 	return true;
 
 }
-String^ Rooftop::SearchModel(CString model, CString fantype)
+String^ Rooftop::SearchModel(CString model, CString fantype, double portata)
 {
 	String^ jsoinrecordset;
 
@@ -1084,23 +1096,40 @@ String^ Rooftop::SearchModel(CString model, CString fantype)
 		modello.GetColumn("Return_fan_EFHA", test);
 		modello.GetColumn("Return_Qty_fan", nfan);
 	}
+
+	double portmin = 0, portmax = 0;
+	modello.GetColumn("Indoor_fan_airflow_min", portmin);
+	modello.GetColumn("Indoor_fan_airflow_max_STD", portmax);
+
 	//ATTENZIONE QUESTI SONO QUELLI ESTERNI ASSIALI, sono EBM?
 	if (fantype == _T("EAFA"))
 	{
 		modello.GetColumn("C1_Outdoor_fan_STD", test);
 		modello.GetColumn("C1_Outdoor_fan_qty", nfan);
+		modello.GetColumn("C1_Outdoor_fan_airflow", portmax);
+		portmin = 0; 
 	}
 	if (fantype == _T("OFLN"))
 	{
 		modello.GetColumn("C2_Outdoor_fan_STD", test);
 		modello.GetColumn("C2_Outdoor_fan_qty", nfan);
+		modello.GetColumn("C2_Outdoor_fan_airflow", portmax);
+		portmin = 0;
+		
 	}
 	if (fantype == _T("OFSP"))
 	{
 		modello.GetColumn("Outdoor_fan_OFSP", test);
 		modello.GetColumn("C2_Outdoor_fan_qty", nfan);
+		modello.GetColumn("C2_Outdoor_fan_airflow", portmax);
+		portmin = 0;
 	}
 	
+
+
+	if (portata < portmin || portata > portmax)
+		return jsoinrecordset;
+
 	//cerco corrispondenza tra nome modello e codice articolo preso da dll:
 	std::string str = (g_elencoEBMJson);
 	//::MessageBox(NULL, g_elencoEBMJson, _T("modello fan"), MB_OK);
@@ -1254,8 +1283,8 @@ bool Rooftop::LoadEBMDll()
 		//TRACE(_T("%s;%s"), fan,cip);TRACE(_T("\n"));
 		CString fan1 = ExtractString(fanEBM, &pos1, _T(";"));
 
-		//::MessageBox(NULL, fan1, _T("modello fan"), MB_OK);
-		//::MessageBox(NULL, fan, _T("modello fan"), MB_OK);
+	//	::MessageBox(NULL, fan1, _T("modello fan"), MB_OK);
+	//	::MessageBox(NULL, fan, _T("modello fan"), MB_OK);
 		// la riga dopo crea i codici articolo
 		//TRACE(_T("%s;%s-%s-%s ;%s\n"), fan, fan1.Left(6), fan1.Mid(6, 4), fan1.Mid(10, 2), fan1);
 		
