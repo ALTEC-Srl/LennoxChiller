@@ -12,6 +12,7 @@ Public Class Form1
         Dim Input As String
         Dim output As String
         If init Then
+            '8-05-23 verificato sia k3g, sia k3g in fanwall, sia assiale singolo - verificati diversi codici errori
             Input = "{""modelid"": ""B6FHC025SP1M"",""supplierid"": 1, ""fantype"": ""EAFA"", ""airflow"": 12000, ""optionsdp"": 100, ""density"": 1.2, ""temperature"": 20, ""iqngn"": 0}"
             output = chiller.GetFanPerformance(Input)
             MsgBox(output)
