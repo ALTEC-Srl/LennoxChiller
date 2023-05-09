@@ -17,7 +17,7 @@
 #include <atldbcli.h>
 #include <afxtempl.h>		// MFC Template classes
 
-
+#define PIGRECO			3.1415928
 constexpr long lenRis = 1000000;
 
 #define SAFE_DELETE(x)			{ if((x)){delete (x); (x)=NULL;} }  

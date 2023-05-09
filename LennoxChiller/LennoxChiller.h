@@ -63,6 +63,7 @@ namespace LennoxRooftop {
 		String^ GetOptionsPressureDrop(String^ jSONIN);
 		String^ GetDrawing(String^ jSONIN);
 		String^ GetBIMModel(String^ jSONIN);
+		String^ GetCondeserNoise();
 		bool Init();
 	private:
 		bool LoadEBMDll();

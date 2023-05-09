@@ -667,9 +667,113 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	CString noiseoutin = doc["noiseoutin"].GetString();
 	CString noiseoutout = doc["noiseoutout"].GetString();
 
-	
 	int iqngn = doc["iqngn"].GetInt();
-	int presnoiselevel = 0;
+
+	int pos1 = 0;
+	int pos2 = 0;
+	int pos3 = 0;
+	double noisesupplyinV[9];
+	double noisesupplyoutV[9];
+	double noiseoutoutV[9];
+	double filtroA[8] = { 26.2,16.1,8.6,3.2,0,-1.2,-1,1.1 };
+	
+	//DA LEGGERE DA TABELLA
+	double coilatt[8] = {1,1,1,1,1,1,1,1};
+	double mitigationcasing[8] = { 8,8,8,8,8,8,8,8 };
+	double jacket[8] = { 0,0,0,3.5,14.3,18.2,21.7,0.0 };
+	for (int i = 0; i < 9; i++)
+	{
+		noisesupplyinV[i] = _tstof(ExtractString(noisesupplyin, &pos1, _T(";")));
+		noisesupplyoutV[i] = _tstof(ExtractString(noisesupplyout, &pos2, _T(";")));
+		noiseoutoutV[i] = _tstof(ExtractString(noiseoutout, &pos3, _T(";")));
+	}
+	
+	//CALCULATION
+	double outdoorbandV[9], supinbandV[9], supoutbandV[9], retinbandV[9], retoutbandV[9], Outdoorband_noexV[9], supinband_noexV[9], supoutband_noexV[9], retinband_noexV[9], retoutband_noexV[9];
+	double sumlog[10];
+	//////
+	for (int i = 1; i < 9; i++)
+	{
+		supoutband_noexV[i] = noisesupplyoutV[i] - filtroA[i - 1];
+		supinband_noexV[i] = noisesupplyinV[i] - filtroA[i - 1] - coilatt[i - 1];
+		sumlog[0] += pow(10, supoutband_noexV[i] / 10.0);
+		sumlog[1] += pow(10, supinband_noexV[i] / 10.0);
+
+	}
+	supoutband_noexV[0] = 10 * log10(sumlog[0]); //Sound Power Levels SUPPLY(dBA) = SUPPLY FAN (out) * SUPPLY FAN NUMBER - EAR ATTENUATION
+	supinband_noexV[0] = 10 * log10(sumlog[1]); //Sound Power Levels RETURN(dBA) = SUPPLY FAN (in) * SUPPLY FAN NUMBER - INDOOR COIL ATTENUATION - EAR ATTENUATION
+	////////
+	
+	//non sono sicuro dell'associazione tra risultati calcolati in excel e output definiti nella documentazione.
+	////////////
+	double NoiseSupplyTot[9]; 
+	for (int i = 1; i < 9; i++)
+	{
+		NoiseSupplyTot[i] = 10 * log10(pow(10, noisesupplyoutV[i] / 10.0)) + 10 * log10(pow(10, supinbandV[i] / 10.0)) - filtroA[i - 1] - mitigationcasing[i-1];
+		sumlog[2] += pow(10, Outdoorband_noexV[i] / 10.0);
+	}
+	NoiseSupplyTot[0] = 10 * log10(sumlog[2]);//Sound Power Levels OUT OF UNIT with only supply fan (dBA) = (SUPPLY fan (in) + SUPPLY fan (out)) * SUPPLY fan NUMBER - TREATMENT BOX ATTENUATION - EAR ATTENUATION
+
+	//////////
+	double NoiseOutdoorTot[9];
+	for (int i = 1; i < 9; i++)
+	{
+		NoiseOutdoorTot[i] = noiseoutoutV[i] - filtroA[i - 1];
+		sumlog[3] += pow(10, NoiseOutdoorTot[i] / 10.0);
+
+	}
+	NoiseOutdoorTot[0] = 10 * log10(sumlog[3]); //Sound Power Levels OUT OF UNIT with only condensing fan (dBA) = CONDENSER fan (out) - EAR ATTENUATION
+	////////////
+
+	double noiseCompV[9];
+	double noiseCompCOJAV[9];
+
+	pos1 = 0;
+	pos2 = 0;
+	String^ jSONComp = GetCondeserNoise(); //input //WIth/Without jacket (COJA)??portata? pressione? 
+	std::string strComp = marshal_as<std::string>(jSONIN);
+	Document docComp;
+	docComp.Parse(strComp.c_str());
+	if (docComp.IsObject())
+	{
+		//lettura json output delle bande d'ottava di rumoristà del compressore, nella verisione con e senza jacket
+		CString noiseComp = docComp["noise"].GetString();
+		CString noiseCompCOJA = docComp["noisecoja"].GetString();
+
+
+		for (int i = 0; i < 9; i++)
+		{
+			noiseCompV[i] = _tstof(ExtractString(noiseComp, &pos1, _T(";")));
+			noiseCompCOJAV[i] = _tstof(ExtractString(noiseCompCOJA, &pos2, _T(";")));
+		}
+		//////
+		for (int i = 1; i < 9; i++)
+		{
+			noiseCompV[i] = noiseCompV[i] - filtroA[i - 1] - coilatt[i - 1];
+			noiseCompCOJAV[i] = noiseCompCOJAV[i] - filtroA[i - 1] - coilatt[i - 1] - jacket[i - 1];
+			sumlog[4] += pow(10, noiseCompV[i] / 10.0);
+			sumlog[5] += pow(10, noiseCompCOJAV[i] / 10.0);
+
+		}
+		noiseCompV[0] = 10 * log10(sumlog[4]); //Sound Power Levels SUPPLY(dBA) = SUPPLY FAN (out) * SUPPLY FAN NUMBER - EAR ATTENUATION
+		noiseCompCOJAV[0] = 10 * log10(sumlog[5]); //Sound Power Levels RETURN(dBA) = SUPPLY FAN (in) * SUPPLY FAN NUMBER - INDOOR COIL ATTENUATION - EAR ATTENUATION
+	}
+
+	///////
+	for (int i = 1; i < 9; i++)
+	{
+		outdoorbandV[i] = 10 * log10(pow(10, noiseCompV[i] / 10.0) + pow(10, NoiseSupplyTot[i] / 10.0) + pow(10, NoiseOutdoorTot[i] / 10.0));
+		Outdoorband_noexV[i] = 10 * log10(pow(10, noiseCompCOJAV[i] / 10.0) + pow(10, NoiseSupplyTot[i] / 10.0) + pow(10, NoiseOutdoorTot[i] / 10.0));
+		sumlog[6] += pow(10, outdoorbandV[i] / 10.0);
+		sumlog[7] += pow(10, Outdoorband_noexV[i] / 10.0);
+	}
+	outdoorbandV[0] = 10 * log10(sumlog[6]); //Total Sound Power Levels OUT OF UNIT (dBA)= SUPPLY FAN + CONDENSER FAN + COMPRESSOR WITHOUT JACKET 
+	Outdoorband_noexV[0] = 10 * log10(sumlog[7]); //Total Sound Power Levels OUT OF UNIT (dBA) [COJA] = SUPPLY FAN + CONDENSER FAN + COMPRESSOR WITH JACKET
+
+	double presnoiselevel = Round(outdoorbandV[0] + 10.0 * log10(1 / (4 * PIGRECO * pow(distance,2))), 1); //è la pressione sonora totale all'esterno con compressore senza jacket
+	//OUTPUT
+
+	
 	CString outdoorband = "", supinband = "", supoutband = "", retinband = "", retoutband = "", Outdoorband_noex = "", supinband_noex = "", supoutband_noex = "", retinband_noex = "", retoutband_noex = "";
 
 	StringBuffer s;
@@ -689,7 +793,7 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	writer.Key("supoutband_noex"); writer.String(supoutband_noex);
 	writer.Key("retinband_noex"); writer.String(retinband_noex);
 	writer.Key("retoutband_noex"); writer.String(retoutband_noex);
-	writer.Key("outdoorband"); writer.Int(presnoiselevel);
+	writer.Key("presnoiselevel"); writer.Double(presnoiselevel); // è la pressione sonora totale all'esterno con compressore senza jacket
 	
 	writer.Key("errorid"); writer.Int(errorcode);
 	writer.Key("version");  writer.String(VERSION);
@@ -701,6 +805,12 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	String^ jsoinrecordset;
 	jsoinrecordset = gcnew String(s.GetString());
 	return  jsoinrecordset;
+}
+
+String^ Rooftop::GetCondeserNoise()
+{
+	String^ err;
+	return  err;
 }
 String^ Rooftop::GetNoiseData1(String^ jSONIN) 
 {
