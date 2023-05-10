@@ -194,7 +194,8 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
     CString model = doc["modelid"].GetString();
     int supplier = doc["supplierid"].GetInt();
     double port = doc["airflow"].GetDouble()/3600.0;
-	CString fantype = doc["fantype"].GetString();
+	int fantype = doc["fantype"].GetInt();
+	CString fanopt = doc["fanoption"].GetString();
     double pTot = doc["optionsdp"].GetDouble();
 	double dens = doc["density"].GetDouble(); 
 	double temperature = doc["temperature"].GetDouble();
@@ -205,9 +206,14 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 	CString fanmodel = "";
 	CString fanname = "";
 	std::string str1 = "";
+	std::string filter = "";
+	CString casingcode = "BAUN";
+	CGenTableRecord option;
+	double a = 0, b = 0, c = 0, d = 0, e = 0;
+
 	//recupero le informazioni nel database interno LENNOX in base all'idmodello richiesto
 	//ritorna un json creato con i dati di ritorno del recordset
-	String^ JSONmodelspecification = SearchModel(model, fantype, port*3600.0);
+	String^ JSONmodelspecification = SearchModel(model, fanopt, port*3600.0, fantype);
 	if (CString(JSONmodelspecification).IsEmpty())
 	{
 		errorcode = 2;
@@ -224,8 +230,7 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 	double maxWidth = 10000; //doc["maxWidth"].GetDouble();
 	double maxHeigth = 10000;// doc["maxHeigth"].GetDouble();
 	
-	
-	
+
 
 	if (fanmodel.IsEmpty() || nfan <= 0)
 	{
@@ -233,6 +238,26 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 		goto exit;
 	}
 	
+	
+	g_CoeffPdc.AddFilterField("Nomcomm", "=", model, filter);
+	g_CoeffPdc.AddFilterField("Flow_stream", "=", 1, filter);
+	g_CoeffPdc.AddFilterField("SupplyDP_code", "=", casingcode, filter);
+	//ricerco il modello e mandato o ripresa
+	option = g_CoeffPdc.Lookup(filter);
+	
+	option.GetColumn("a", a);
+	option.GetColumn("b", b);
+	option.GetColumn("c", c);
+	option.GetColumn("d", d);
+	option.GetColumn("e", e);
+	double pdcCasing = a * pow(port, 4) + b * pow(port, 3) + c * pow(port, 2) + d * port + e;
+	pdcCasing = Round(pdcCasing, 1);
+	if (pdcCasing <= 0)
+		errorcode = 3;
+	if (pdcCasing > 300)
+		errorcode = 3;
+	
+
 	double nfunzi = 0;
 	double kwfunz = 0;
 	double phifun = 0;//corrente ampere
@@ -357,6 +382,9 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 			{
 				double port1 = port / nfan;
 				double pressh = maxpd;
+				if (fantype == 1 || fantype == 2)
+					pressh -= pdcCasing;
+
 				double pressl = 0;
 				double presss = (pressl + pressh) / 2.0;
 
@@ -644,7 +672,9 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	CString model = doc["modelid"].GetString();
 	int supplier = doc["supplierid"].GetInt();
 
-	CString fantypesupply = doc["fantypesupply"].GetString();
+	//not used
+
+/*	CString fantypesupply = doc["fantypesupply"].GetString();
 	CString fantypeexhaust = doc["fantypeexhaust"].GetString();
 	CString fantypeoutdoor = doc["fantypeoutdoor"].GetString();
 	
@@ -654,7 +684,7 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 
 	pdc[1] = doc["staticdpexh"].GetDouble();
 	pdc[0] = doc["staticdpsup"].GetDouble();
-	pdc[2] = doc["staticdpout"].GetDouble();
+	pdc[2] = doc["staticdpout"].GetDouble();*/
 
 	double distance = doc["distance"].GetDouble();
 	double dens = doc["density"].GetDouble();
@@ -681,7 +711,7 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	double coilatt[8] = {1,1,1,1,1,1,1,1};
 	double mitigationcasing[8] = { 8,8,8,8,8,8,8,8 };
 	double jacket[8] = { 0,0,0,3.5,14.3,18.2,21.7,0.0 };
-	for (int i = 0; i < 9; i++)
+	for (int i = 1; i < 9; i++)
 	{
 		noisesupplyinV[i] = _tstof(ExtractString(noisesupplyin, &pos1, _T(";")));
 		noisesupplyoutV[i] = _tstof(ExtractString(noisesupplyout, &pos2, _T(";")));
@@ -709,8 +739,8 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	double NoiseSupplyTot[9]; 
 	for (int i = 1; i < 9; i++)
 	{
-		NoiseSupplyTot[i] = 10 * log10(pow(10, noisesupplyoutV[i] / 10.0)) + 10 * log10(pow(10, supinbandV[i] / 10.0)) - filtroA[i - 1] - mitigationcasing[i-1];
-		sumlog[2] += pow(10, Outdoorband_noexV[i] / 10.0);
+		NoiseSupplyTot[i] = 10 * log10(pow(10, noisesupplyoutV[i] / 10.0)) + 10 * log10(pow(10, noisesupplyinV[i] / 10.0)) - filtroA[i - 1] - mitigationcasing[i-1];
+		sumlog[2] += pow(10, NoiseSupplyTot[i] / 10.0);
 	}
 	NoiseSupplyTot[0] = 10 * log10(sumlog[2]);//Sound Power Levels OUT OF UNIT with only supply fan (dBA) = (SUPPLY fan (in) + SUPPLY fan (out)) * SUPPLY fan NUMBER - TREATMENT BOX ATTENUATION - EAR ATTENUATION
 
@@ -775,6 +805,13 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 
 	
 	CString outdoorband = "", supinband = "", supoutband = "", retinband = "", retoutband = "", Outdoorband_noex = "", supinband_noex = "", supoutband_noex = "", retinband_noex = "", retoutband_noex = "";
+	
+	for (int i = 0; i < 9; i++)
+	{
+		CString temp;
+		temp.Format("%.1f;", outdoorbandV[i]);
+		Outdoorband_noex += temp;
+	}
 
 	StringBuffer s;
 	Writer<StringBuffer> writer(s);
@@ -1149,7 +1186,7 @@ bool Rooftop::OpenDataSource(CString fileName, CDataSource& ds, CString provider
 	return true;
 
 }
-String^ Rooftop::SearchModel(CString model, CString fantype, double portata)
+String^ Rooftop::SearchModel(CString model, CString fanopt, double portata, int fantype)
 {
 	String^ jsoinrecordset;
 
@@ -1164,75 +1201,82 @@ String^ Rooftop::SearchModel(CString model, CString fantype, double portata)
 	long nfan = 1;
 	CString test = "";
 	//da riceve conferma mappatura con colonne db gf 21-04-23 -> segnate nella documentazione
-
-	if (fantype.IsEmpty() || fantype == _T("SFLC"))
+	if (fantype == 1)
 	{
-		modello.GetColumn("Indoor_Fan_STD", test);
-		modello.GetColumn("Indoor_Qty_Fan_STD", nfan);
-	}
-	if (fantype == _T("SFHC"))
-	{
-		modello.GetColumn("Indoor_Fan_SFHC", test);
-		modello.GetColumn("Indoor_Qty_Fan_SFHC", nfan);
-	}
-	if (fantype == _T("SFLA"))
-	{
-		modello.GetColumn("Indoor_Fan_SFLA", test);
-		modello.GetColumn("Indoor_Qty_Fan_SFLA", nfan);
-	}
-	if (fantype == _T("SFHA"))
-	{
-		modello.GetColumn("Indoor_Fan_SFHA", test);
-		modello.GetColumn("Indoor_Qty_Fan_SFHA", nfan);
+		if (fanopt.IsEmpty() || fanopt == _T("SFLC"))
+		{
+			modello.GetColumn("Indoor_Fan_STD", test);
+			modello.GetColumn("Indoor_Qty_Fan_STD", nfan);
+		}
+		if (fanopt == _T("SFHC"))
+		{
+			modello.GetColumn("Indoor_Fan_SFHC", test);
+			modello.GetColumn("Indoor_Qty_Fan_SFHC", nfan);
+		}
+		if (fanopt == _T("SFLA"))
+		{
+			modello.GetColumn("Indoor_Fan_SFLA", test);
+			modello.GetColumn("Indoor_Qty_Fan_SFLA", nfan);
+		}
+		if (fanopt == _T("SFHA"))
+		{
+			modello.GetColumn("Indoor_Fan_SFHA", test);
+			modello.GetColumn("Indoor_Qty_Fan_SFHA", nfan);
+		}
 	}
 	//return fan
-	if (fantype == _T("EFLC"))
+	if (fantype == 2)
 	{
-		modello.GetColumn("Return_fan_EFLC", test);
-		modello.GetColumn("Return_Qty_fan", nfan);
+		if (fanopt.IsEmpty() || fanopt == _T("EFLC"))
+		{
+			modello.GetColumn("Return_fan_EFLC", test);
+			modello.GetColumn("Return_Qty_fan", nfan);
+		}
+		if (fanopt == _T("EFHC"))
+		{
+			modello.GetColumn("Return_fan_EFHC", test);
+			modello.GetColumn("Return_Qty_fan", nfan);
+		}
+		if (fanopt == _T("EFLA"))
+		{
+			modello.GetColumn("Return_fan_EFLA", test);
+			modello.GetColumn("Return_Qty_fan", nfan);
+		}
+		if (fanopt == _T("EFHA"))
+		{
+			modello.GetColumn("Return_fan_EFHA", test);
+			modello.GetColumn("Return_Qty_fan", nfan);
+		}
 	}
-	if (fantype == _T("EFHC"))
-	{
-		modello.GetColumn("Return_fan_EFHC", test);
-		modello.GetColumn("Return_Qty_fan", nfan);
-	}
-	if (fantype == _T("EFLA"))
-	{
-		modello.GetColumn("Return_fan_EFLA", test);
-		modello.GetColumn("Return_Qty_fan", nfan);
-	}
-	if (fantype == _T("EFHA"))
-	{
-		modello.GetColumn("Return_fan_EFHA", test);
-		modello.GetColumn("Return_Qty_fan", nfan);
-	}
-
 	double portmin = 0, portmax = 0;
 	modello.GetColumn("Indoor_fan_airflow_min", portmin);
 	modello.GetColumn("Indoor_fan_airflow_max_STD", portmax);
 
 	//ATTENZIONE QUESTI SONO QUELLI ESTERNI ASSIALI, sono EBM?
-	if (fantype == _T("EAFA"))
+	if (fantype == 3)
 	{
-		modello.GetColumn("C1_Outdoor_fan_STD", test);
-		modello.GetColumn("C1_Outdoor_fan_qty", nfan);
-		modello.GetColumn("C1_Outdoor_fan_airflow", portmax);
-		portmin = 0; 
-	}
-	if (fantype == _T("OFLN"))
-	{
-		modello.GetColumn("C2_Outdoor_fan_STD", test);
-		modello.GetColumn("C2_Outdoor_fan_qty", nfan);
-		modello.GetColumn("C2_Outdoor_fan_airflow", portmax);
-		portmin = 0;
-		
-	}
-	if (fantype == _T("OFSP"))
-	{
-		modello.GetColumn("Outdoor_fan_OFSP", test);
-		modello.GetColumn("C2_Outdoor_fan_qty", nfan);
-		modello.GetColumn("C2_Outdoor_fan_airflow", portmax);
-		portmin = 0;
+		if (fanopt == _T("EAFA"))
+		{
+			modello.GetColumn("C1_Outdoor_fan_STD", test);
+			modello.GetColumn("C1_Outdoor_fan_qty", nfan);
+			modello.GetColumn("C1_Outdoor_fan_airflow", portmax);
+			portmin = 0;
+		}
+		if (fanopt == _T("OFLN"))
+		{
+			modello.GetColumn("C2_Outdoor_fan_STD", test);
+			modello.GetColumn("C2_Outdoor_fan_qty", nfan);
+			modello.GetColumn("C2_Outdoor_fan_airflow", portmax);
+			portmin = 0;
+
+		}
+		if (fanopt == _T("OFSP"))
+		{
+			modello.GetColumn("Outdoor_fan_OFSP", test);
+			modello.GetColumn("C2_Outdoor_fan_qty", nfan);
+			modello.GetColumn("C2_Outdoor_fan_airflow", portmax);
+			portmin = 0;
+		}
 	}
 	
 
