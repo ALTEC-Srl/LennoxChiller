@@ -739,7 +739,7 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	double NoiseSupplyTot[9]; 
 	for (int i = 1; i < 9; i++)
 	{
-		NoiseSupplyTot[i] = 10 * log10(pow(10, noisesupplyoutV[i] / 10.0)) + 10 * log10(pow(10, noisesupplyinV[i] / 10.0)) - filtroA[i - 1] - mitigationcasing[i-1];
+		NoiseSupplyTot[i] = 10 * log10(pow(10, noisesupplyoutV[i] / 10.0) + (pow(10, noisesupplyinV[i] / 10.0))) - filtroA[i - 1] - mitigationcasing[i-1];
 		sumlog[2] += pow(10, NoiseSupplyTot[i] / 10.0);
 	}
 	NoiseSupplyTot[0] = 10 * log10(sumlog[2]);//Sound Power Levels OUT OF UNIT with only supply fan (dBA) = (SUPPLY fan (in) + SUPPLY fan (out)) * SUPPLY fan NUMBER - TREATMENT BOX ATTENUATION - EAR ATTENUATION
@@ -808,9 +808,11 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	
 	for (int i = 0; i < 9; i++)
 	{
-		CString temp;
+		CString temp,temp1,temp2;
 		temp.Format("%.1f;", outdoorbandV[i]);
+		temp1.Format("%.1f;", NoiseSupplyTot[i]);
 		Outdoorband_noex += temp;
+		supoutband_noex += temp1;
 	}
 
 	StringBuffer s;
