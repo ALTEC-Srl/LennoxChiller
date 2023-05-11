@@ -49,4 +49,9 @@ Public Class Form1
         End If
 
     End Sub
+
+    Private Sub Button5_Click(sender As Object, e As EventArgs) Handles Button5.Click
+        Dim Input As String
+        chiller.GetWaterCoilPerformance(Input)
+    End Sub
 End Class

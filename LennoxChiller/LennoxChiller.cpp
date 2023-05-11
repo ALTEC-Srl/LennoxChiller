@@ -357,7 +357,7 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 			err = 0;
 
 			err = GET_STANDARDS_FANMOTOR(cMBBuffer, SIZE, TYP, ISOCLASS, PROTECTION, z1, z2, &output[0]);	// MV 10.06.2014. Per utilizzare la nuova DLL 3.0.1.0
-			errorcode = err * 200;
+			errorcode = err * 1000;
 			int pos = 0;
 
 
@@ -656,6 +656,172 @@ String^ Rooftop::GetModelPerformance(String^ jSONIN)
 
 String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 {
+
+		leelcoilsDLL::Calculation calc;
+		std::string output;
+		std::vector<std::string> single_result;
+		std::string strJSON;
+		/*JObject JO;
+		JObject JOmeasure;
+		JObject JOres;
+	
+		
+		JO.Add("PARAM3", 1); // calculation - fluid
+		JO.Add("PARAM4", true); // verify coil
+
+		// coil
+		JO.Add("PARAM9", -999999); // max fin height
+		JO.Add("PARAM26", 84); // number tubes
+		JO.Add("PARAM57", -999999); // fin height
+		JO.Add("PARAM10", 900); // length fin block
+		JO.Add("PARAM70", 0); // Number of tubes not used in circuit
+		JO.Add("PARAM25", 6); // number rows
+		JO.Add("PARAM29", 2.12); // spacing
+		JO.Add("PARAM22", 1); // number of circuits
+		JO.Add("PARAM41", 1); // Type of fluid arrangement (1 = counterflow ; 2 = Parallel flow)
+		JO.Add("PARAM27", 31); // number of injections (total Number of Tubes feeded from headers)
+		JO.Add("PARAM33", "G"); // surface
+		JO.Add("PARAM20", "4S6"); // pattern
+		JO.Add("OP_01", 1); // tube material
+		JO.Add("OP_09", 2); // tube thickness
+		JO.Add("OP_03", 1); // fin thickness
+		JO.Add("OP_02", 1); // fin material
+
+		// air type input
+		JO.Add("PARAM49", 7); // air conditions type
+		JO.Add("PARAM50", -999999); // Moist air density
+		JO.Add("PARAM51", -999999); // barometric pressure
+		JO.Add("PARAM52", 0); // altitude
+
+		// air temperatures
+		JO.Add("PARAM36", 42); // Entering Air Temperature Dry Bulb
+		JO.Add("PARAM37", -999999); // Entering Air Temperature Wet Bulb
+		JO.Add("PARAM38", -999999); // Entering Air Absolute Humidity
+		JO.Add("PARAM39", 30); // Entering Air Relative Humidity
+
+		// air flow
+		JO.Add("PARAM54", 18612); // Volumetric Air Flow
+		JO.Add("PARAM46", -999999); // Massic Air Flow - Moist air
+		JO.Add("PARAM34", -999999); // Air velocity
+		JO.Add("PARAM97", -999999); // fan select
+		JO.Add("PARAM99", 0); // fan direction
+		
+		//fluid
+		JO.Add("PARAM43", 1); //type fluid
+
+			JO.Add("PARAM89", -999999); //Superheated water Pressure
+			JO.Add("PARAM90", -999999); //Custom fluid density
+			JO.Add("PARAM91", -999999); //Custom fluid viscosity
+			JO.Add("PARAM92", -999999); //Custom fluid concuctivity
+			JO.Add("PARAM93", -999999); //Custom fluid specific heat
+
+			JO.Add("PARAM40", 6); //Entering fluid temperature
+			JO.Add("PARAM45", 12); //Leaving fluid temperature
+			JO.Add("PARAM55", -999999); //Volumetric Fluid Flow
+			JO.Add("PARAM47", -999999); //Mass Fluid Flow
+
+			JO.Add("PARAM95", -999999); //diameter of header
+
+			//duty
+			JO.Add("PARAM87", 0); //Oversurface Requested
+
+		Object JOO;
+		JO.ToObject(Object);
+		String^ strJSONCoil = Newtonsoft::Json::JsonConvert::SerializeObject();*/
+		StringBuffer s;
+		Writer<StringBuffer> writer(s);
+		writer.StartObject();
+		
+			
+
+			writer.Key("PARAM3"); writer.Double(1); // calculation - fluid
+			writer.Key("PARAM4"); writer.String("true"); // verify coil
+
+			// coil
+			writer.Key("PARAM9"); writer.Double(-999999); // max fin height
+			writer.Key("PARAM26"); writer.Double(84); // number tubes
+			writer.Key("PARAM57"); writer.Double(-999999); // fin height
+			writer.Key("PARAM10"); writer.Double(900); // length fin block
+			writer.Key("PARAM70"); writer.Double(0); // Number of tubes not used in circuit
+			writer.Key("PARAM25"); writer.Double(6); // number rows
+			writer.Key("PARAM29"); writer.Double(2.12); // spacing
+			writer.Key("PARAM22"); writer.Double(1); // number of circuits
+			writer.Key("PARAM41"); writer.Double(1); // Type of fluid arrangement (1 = counterflow ; 2 = Parallel flow)
+			writer.Key("PARAM27"); writer.Double(31); // number of injections (total Number of Tubes feeded from headers)
+			writer.Key("PARAM33"); writer.String("G"); // surface
+			writer.Key("PARAM20"); writer.String("4S6"); // pattern
+			writer.Key("OP_01"); writer.Double(1); // tube material
+			writer.Key("OP_09"); writer.Double(2); // tube thickness
+			writer.Key("OP_03"); writer.Double(1); // fin thickness
+			writer.Key("OP_02"); writer.Double(1); // fin material
+
+			// air type input
+			writer.Key("PARAM49"); writer.Double(7); // air conditions type
+			writer.Key("PARAM50"); writer.Double(-999999); // Moist air density
+			writer.Key("PARAM51"); writer.Double(-999999); // barometric pressure
+			writer.Key("PARAM52"); writer.Double(0); // altitude
+
+			// air temperatures
+			writer.Key("PARAM36"); writer.Double(42); // Entering Air Temperature Dry Bulb
+			writer.Key("PARAM37"); writer.Double(-999999); // Entering Air Temperature Wet Bulb
+			writer.Key("PARAM38"); writer.Double(-999999); // Entering Air Absolute Humidity
+			writer.Key("PARAM39"); writer.Double(30); // Entering Air Relative Humidity
+
+			// air flow
+			writer.Key("PARAM54"); writer.Double(18612); // Volumetric Air Flow
+			writer.Key("PARAM46"); writer.Double(-999999); // Massic Air Flow - Moist air
+			writer.Key("PARAM34"); writer.Double(-999999); // Air velocity
+			writer.Key("PARAM97"); writer.Double(-999999); // fan select
+			writer.Key("PARAM99"); writer.Double(0); // fan direction
+
+			//fluid
+			writer.Key("PARAM43"); writer.Double(1); //type fluid
+
+			writer.Key("PARAM89"); writer.Double(-999999); //Superheated water Pressure
+			writer.Key("PARAM90"); writer.Double(-999999); //Custom fluid density
+			writer.Key("PARAM91"); writer.Double(-999999); //Custom fluid viscosity
+			writer.Key("PARAM92"); writer.Double(-999999); //Custom fluid concuctivity
+			writer.Key("PARAM93"); writer.Double(-999999); //Custom fluid specific heat
+
+			writer.Key("PARAM40"); writer.Double(6); //Entering fluid temperature
+			writer.Key("PARAM45"); writer.Double(12); //Leaving fluid temperature
+			writer.Key("PARAM55"); writer.Double(-999999); //Volumetric Fluid Flow
+			writer.Key("PARAM47"); writer.Double(-999999); //Mass Fluid Flow
+
+			writer.Key("PARAM95"); writer.Double(-999999); //diameter of header
+
+			//duty
+			writer.Key("PARAM87"); writer.Double(0); //Oversurface Requested
+		
+		writer.EndObject();
+		
+
+
+		String^ strJSONCoil;
+		strJSONCoil = gcnew String(s.GetString());
+
+		::MessageBox(NULL, s.GetString(), _T(""), MB_OK);
+		leelcoilsDLL::Calculation^ calcLeel = gcnew leelcoilsDLL::Calculation();
+		
+		String^ nresults = calcLeel->StartCalculation(strJSONCoil)->Trim();
+		
+		CString d = nresults;
+		if (atoi(d) > 0)
+		{
+			String^ outputCoil = calcLeel->ReadResult(0);
+			CString d = outputCoil;
+			::MessageBox(NULL, d, _T(""), MB_OK);
+		}
+/*
+		if (output == "") {
+			array<System::String^>^ single_result = calcLeel->ReadResults();
+
+			if (single_result->Length > 0) {
+				JOres = Newtonsoft::Json::JsonConvert::DeserializeObject(single_result[0]);
+			}
+		}
+
+		*/
 	String^ err;
 	return  err;
 }
@@ -708,9 +874,14 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	double filtroA[8] = { 26.2,16.1,8.6,3.2,0,-1.2,-1,1.1 };
 	
 	//DA LEGGERE DA TABELLA
+	GetAttenuazioni(1);
+	GetAttenuazioni(2);
+	GetAttenuazioni(3);
+
 	double coilatt[8] = {1,1,1,1,1,1,1,1};
 	double mitigationcasing[8] = { 8,8,8,8,8,8,8,8 };
 	double jacket[8] = { 0,0,0,3.5,14.3,18.2,21.7,0.0 };
+
 	for (int i = 1; i < 9; i++)
 	{
 		noisesupplyinV[i] = _tstof(ExtractString(noisesupplyin, &pos1, _T(";")));
@@ -851,6 +1022,18 @@ String^ Rooftop::GetCondeserNoise()
 	String^ err;
 	return  err;
 }
+String^ Rooftop::GetAttenuazioni(short tipo)
+{
+	//tipo:
+	//batteria = 1
+	//casing  = 2;
+	//jacket = 3; 
+	//etc
+
+	String^ err;
+	return  err;
+}
+
 String^ Rooftop::GetNoiseData1(String^ jSONIN) 
 {
 	String^ err;

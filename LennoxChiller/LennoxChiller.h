@@ -12,7 +12,7 @@
 #include "GenTable.h"
 #include "Gasvapore.h"
 
-#define VERSION "1.0.0.0"
+
 // Metodi per EBM 
 //typedef int (__stdcall *PEBMPAPSTFAN_FNCT6)(	char** in, char** out);
 typedef int(__stdcall* PEBMPAPSTFAN_FNCT1)	(char** in);
@@ -29,6 +29,14 @@ using namespace msclr::interop;
 using namespace rapidjson;
 using namespace std;
 
+#using <leelcoilsDLL.dll>
+using namespace leelcoilsDLL;
+
+
+#//using <D:\lavoro 2022\LENNOX\TestAppVB\bin\Debug\Newtonsoft.Json.11.0.2\lib\net45\Newtonsoft.Json.dll>
+
+//using namespace Newtonsoft::Json;
+//using namespace Newtonsoft::Json::Linq;
 
 CDataSource		g_Sql;
 CSession		g_session;
@@ -63,7 +71,7 @@ namespace LennoxRooftop {
 		String^ GetOptionsPressureDrop(String^ jSONIN);
 		String^ GetDrawing(String^ jSONIN);
 		String^ GetBIMModel(String^ jSONIN);
-		String^ GetCondeserNoise();
+		
 		bool Init();
 	private:
 		bool LoadEBMDll();
@@ -75,6 +83,8 @@ namespace LennoxRooftop {
 		bool LoadCoeffPdc();
 		bool OpenConnection();
 		bool OpenDataSource(CString fileName, CDataSource& ds, CString provider, CString pwd);
+		String^ GetCondeserNoise();
+		String^ GetAttenuazioni(short tipo);
 		
 	};
 	///////////////////////////////////////////////////////////////////////////
