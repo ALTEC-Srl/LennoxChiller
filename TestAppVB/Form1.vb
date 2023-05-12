@@ -1,5 +1,5 @@
 ﻿Imports LennoxRooftop
-
+'Imports leelcoilsDLL // da aggiungere nei riferimenti se si vuole provare direttamente da VB, modificare nome assembly in:ExampleExternal
 Public Class Form1
     Dim init As Boolean
     Dim chiller As New LennoxRooftop.Rooftop()
@@ -53,5 +53,14 @@ Public Class Form1
     Private Sub Button5_Click(sender As Object, e As EventArgs) Handles Button5.Click
         Dim Input As String
         chiller.GetWaterCoilPerformance(Input)
+
+        'da aggiungere nei riferimenti se si vuole provare direttamente da VB, modificare nome assembly in:ExampleExternal
+        ' Dim calc As leelcoilsDLL.Calculation
+        'Dim output As String
+        'Dim strJSON As String
+        'strJSON = "{""PARAM3"":1,""PARAM4"":true,""PARAM9"":-999999,""PARAM26"":84,""PARAM57"":-999999,""PARAM10"":900,""PARAM70"":0,""PARAM25"":6,""PARAM29"":2.12,""PARAM22"":1,""PARAM41"":1,""PARAM27"":31,""PARAM33"":""G"",""PARAM20"":""4S6"",""OP_01"":1,""OP_09"":2,""OP_03"":1,""OP_02"":1,""PARAM49"":7,""PARAM50"":-999999,""PARAM51"":-999999,""PARAM52"":0,""PARAM36"":42,""PARAM37"":-999999,""PARAM38"":-999999,""PARAM39"":30,""PARAM54"":18612,""PARAM46"":-999999,""PARAM34"":-999999,""PARAM97"":-999999,""PARAM99"":0,""PARAM43"":1,""PARAM89"":-999999,""PARAM90"":-999999,""PARAM91"":-999999,""PARAM92"":-999999,""PARAM93"":-999999,""PARAM40"":6.5,""PARAM45"":12.8,""PARAM55"":-999999,""PARAM47"":-999999,""PARAM95"":-999999,""PARAM87"":0}"
+        'calc = New leelcoilsDLL.Calculation()
+        'output = calc.StartCalculation(strJSON).Trim()
+
     End Sub
 End Class

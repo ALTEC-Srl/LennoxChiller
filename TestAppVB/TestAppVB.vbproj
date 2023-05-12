@@ -48,8 +48,8 @@
     <OptionInfer>On</OptionInfer>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="LennoxChiller">
-      <HintPath>..\LennoxChiller\Debug\LennoxChiller.dll</HintPath>
+    <Reference Include="LennoxRooftop">
+      <HintPath>..\LennoxChiller\Debug\LennoxRooftop.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />

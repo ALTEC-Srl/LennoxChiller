@@ -734,61 +734,61 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		
 			
 
-			writer.Key("PARAM3"); writer.Double(1); // calculation - fluid
-			writer.Key("PARAM4"); writer.String("true"); // verify coil
+			writer.Key("PARAM3"); writer.Int(1); // calculation - fluid
+			writer.Key("PARAM4"); writer.String("True"); // verify coil
 
 			// coil
-			writer.Key("PARAM9"); writer.Double(-999999); // max fin height
-			writer.Key("PARAM26"); writer.Double(84); // number tubes
-			writer.Key("PARAM57"); writer.Double(-999999); // fin height
+			writer.Key("PARAM9"); writer.Int(-999999); // max fin height
+			writer.Key("PARAM26"); writer.Int(84); // number tubes
+			writer.Key("PARAM57"); writer.Int(-999999); // fin height
 			writer.Key("PARAM10"); writer.Double(900); // length fin block
-			writer.Key("PARAM70"); writer.Double(0); // Number of tubes not used in circuit
-			writer.Key("PARAM25"); writer.Double(6); // number rows
+			writer.Key("PARAM70"); writer.Int(0); // Number of tubes not used in circuit
+			writer.Key("PARAM25"); writer.Int(6); // number rows
 			writer.Key("PARAM29"); writer.Double(2.12); // spacing
-			writer.Key("PARAM22"); writer.Double(1); // number of circuits
-			writer.Key("PARAM41"); writer.Double(1); // Type of fluid arrangement (1 = counterflow ; 2 = Parallel flow)
-			writer.Key("PARAM27"); writer.Double(31); // number of injections (total Number of Tubes feeded from headers)
+			writer.Key("PARAM22"); writer.Int(1); // number of circuits
+			writer.Key("PARAM41"); writer.Int(1); // Type of fluid arrangement (1 = counterflow ; 2 = Parallel flow)
+			writer.Key("PARAM27"); writer.Int(31); // number of injections (total Number of Tubes feeded from headers)
 			writer.Key("PARAM33"); writer.String("G"); // surface
 			writer.Key("PARAM20"); writer.String("4S6"); // pattern
-			writer.Key("OP_01"); writer.Double(1); // tube material
-			writer.Key("OP_09"); writer.Double(2); // tube thickness
-			writer.Key("OP_03"); writer.Double(1); // fin thickness
-			writer.Key("OP_02"); writer.Double(1); // fin material
+			writer.Key("OP_01"); writer.Int(1); // tube material
+			writer.Key("OP_09"); writer.Int(2); // tube thickness
+			writer.Key("OP_03"); writer.Int(1); // fin thickness
+			writer.Key("OP_02"); writer.Int(1); // fin material
 
 			// air type input
-			writer.Key("PARAM49"); writer.Double(7); // air conditions type
-			writer.Key("PARAM50"); writer.Double(-999999); // Moist air density
-			writer.Key("PARAM51"); writer.Double(-999999); // barometric pressure
+			writer.Key("PARAM49"); writer.Int(7); // air conditions type
+			writer.Key("PARAM50"); writer.Int(-999999); // Moist air density
+			writer.Key("PARAM51"); writer.Int(-999999); // barometric pressure
 			writer.Key("PARAM52"); writer.Double(0); // altitude
 
 			// air temperatures
 			writer.Key("PARAM36"); writer.Double(42); // Entering Air Temperature Dry Bulb
-			writer.Key("PARAM37"); writer.Double(-999999); // Entering Air Temperature Wet Bulb
-			writer.Key("PARAM38"); writer.Double(-999999); // Entering Air Absolute Humidity
+			writer.Key("PARAM37"); writer.Int(-999999); // Entering Air Temperature Wet Bulb
+			writer.Key("PARAM38"); writer.Int(-999999); // Entering Air Absolute Humidity
 			writer.Key("PARAM39"); writer.Double(30); // Entering Air Relative Humidity
 
 			// air flow
 			writer.Key("PARAM54"); writer.Double(18612); // Volumetric Air Flow
-			writer.Key("PARAM46"); writer.Double(-999999); // Massic Air Flow - Moist air
-			writer.Key("PARAM34"); writer.Double(-999999); // Air velocity
-			writer.Key("PARAM97"); writer.Double(-999999); // fan select
-			writer.Key("PARAM99"); writer.Double(0); // fan direction
+			writer.Key("PARAM46"); writer.Int(-999999); // Massic Air Flow - Moist air
+			writer.Key("PARAM34"); writer.Int(-999999); // Air velocity
+			writer.Key("PARAM97"); writer.Int(-999999); // fan select
+			writer.Key("PARAM99"); writer.Int(0); // fan direction
 
 			//fluid
-			writer.Key("PARAM43"); writer.Double(1); //type fluid
+			writer.Key("PARAM43"); writer.Int(1); //type fluid
 
-			writer.Key("PARAM89"); writer.Double(-999999); //Superheated water Pressure
-			writer.Key("PARAM90"); writer.Double(-999999); //Custom fluid density
-			writer.Key("PARAM91"); writer.Double(-999999); //Custom fluid viscosity
-			writer.Key("PARAM92"); writer.Double(-999999); //Custom fluid concuctivity
-			writer.Key("PARAM93"); writer.Double(-999999); //Custom fluid specific heat
+			writer.Key("PARAM89"); writer.Int(-999999); //Superheated water Pressure
+			writer.Key("PARAM90"); writer.Int(-999999); //Custom fluid density
+			writer.Key("PARAM91"); writer.Int(-999999); //Custom fluid viscosity
+			writer.Key("PARAM92"); writer.Int(-999999); //Custom fluid concuctivity
+			writer.Key("PARAM93"); writer.Int(-999999); //Custom fluid specific heat
 
 			writer.Key("PARAM40"); writer.Double(6); //Entering fluid temperature
 			writer.Key("PARAM45"); writer.Double(12); //Leaving fluid temperature
-			writer.Key("PARAM55"); writer.Double(-999999); //Volumetric Fluid Flow
-			writer.Key("PARAM47"); writer.Double(-999999); //Mass Fluid Flow
+			writer.Key("PARAM55"); writer.Int(-999999); //Volumetric Fluid Flow
+			writer.Key("PARAM47"); writer.Int(-999999); //Mass Fluid Flow
 
-			writer.Key("PARAM95"); writer.Double(-999999); //diameter of header
+			writer.Key("PARAM95"); writer.Int(-999999); //diameter of header
 
 			//duty
 			writer.Key("PARAM87"); writer.Double(0); //Oversurface Requested
@@ -798,20 +798,31 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 
 
 		String^ strJSONCoil;
-		strJSONCoil = gcnew String(s.GetString());
+		//strJSONCoil = gcnew String(s.GetString());
 
-		::MessageBox(NULL, s.GetString(), _T(""), MB_OK);
+		strJSONCoil = "{""PARAM3"":1,""PARAM4"":true,""PARAM9"":-999999,""PARAM26"":84,""PARAM57"":-999999,""PARAM10"":900,""PARAM70"":0,""PARAM25"":6,""PARAM29"":2.12,""PARAM22"":1,""PARAM41"":1,""PARAM27"":31,""PARAM33"":""G"",""PARAM20"":""4S6"",""OP_01"":1,""OP_09"":2,""OP_03"":1,""OP_02"":1,""PARAM49"":7,""PARAM50"":-999999,""PARAM51"":-999999,""PARAM52"":0,""PARAM36"":42,""PARAM37"":-999999,""PARAM38"":-999999,""PARAM39"":30,""PARAM54"":18612,""PARAM46"":-999999,""PARAM34"":-999999,""PARAM97"":-999999,""PARAM99"":0,""PARAM43"":1,""PARAM89"":-999999,""PARAM90"":-999999,""PARAM91"":-999999,""PARAM92"":-999999,""PARAM93"":-999999,""PARAM40"":6.5,""PARAM45"":12.8,""PARAM55"":-999999,""PARAM47"":-999999,""PARAM95"":-999999,""PARAM87"":0}";
+		strJSONCoil = "knjdsvòlkvdsòlksdòlk";
+		CString temp = CString(strJSONCoil);
+		::MessageBox(NULL, temp, _T(""), MB_OK);
 		leelcoilsDLL::Calculation^ calcLeel = gcnew leelcoilsDLL::Calculation();
 		
 		String^ nresults = calcLeel->StartCalculation(strJSONCoil)->Trim();
 		
 		CString d = nresults;
-		if (atoi(d) > 0)
-		{
-			String^ outputCoil = calcLeel->ReadResult(0);
-			CString d = outputCoil;
-			::MessageBox(NULL, d, _T(""), MB_OK);
-		}
+		::MessageBox(NULL, d, _T(""), MB_OK);
+		//if (atoi(d) > 0)
+		//{
+		System::Collections::Generic::List<System::String^>^ results;
+		std::array <String^, 100>;
+		
+		results = calcLeel->ReadResults();
+		nresults = results->ToString();
+		d = nresults;
+		::MessageBox(NULL, d, _T(""), MB_OK);
+			//String^ outputCoil = calcLeel->ReadResults();
+			//d = outputCoil;
+			//::MessageBox(NULL, d, _T(""), MB_OK);
+		//}
 /*
 		if (output == "") {
 			array<System::String^>^ single_result = calcLeel->ReadResults();
@@ -971,7 +982,9 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	outdoorbandV[0] = 10 * log10(sumlog[6]); //Total Sound Power Levels OUT OF UNIT (dBA)= SUPPLY FAN + CONDENSER FAN + COMPRESSOR WITHOUT JACKET 
 	Outdoorband_noexV[0] = 10 * log10(sumlog[7]); //Total Sound Power Levels OUT OF UNIT (dBA) [COJA] = SUPPLY FAN + CONDENSER FAN + COMPRESSOR WITH JACKET
 
-	double presnoiselevel = Round(outdoorbandV[0] + 10.0 * log10(1 / (4 * PIGRECO * pow(distance,2))), 1); //è la pressione sonora totale all'esterno con compressore senza jacket
+	double presnoiselevel = Round(outdoorbandV[0] + 10.0 * log10(1 / (2 * PIGRECO * pow(distance,2))), 1); //è la pressione sonora totale all'esterno con compressore senza jacket
+	//telefonata con pino 12-05-23 , cambiato in 2 * PIGRECO, è semisferico e non sferico.
+	
 	//OUTPUT
 
 	
