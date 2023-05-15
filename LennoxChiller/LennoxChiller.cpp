@@ -774,55 +774,55 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 			writer.Key("PARAM97"); writer.Int(-999999); // fan select
 			writer.Key("PARAM99"); writer.Int(0); // fan direction
 
-			//fluid
-			writer.Key("PARAM43"); writer.Int(1); //type fluid
+//fluid
+writer.Key("PARAM43"); writer.Int(1); //type fluid
 
-			writer.Key("PARAM89"); writer.Int(-999999); //Superheated water Pressure
-			writer.Key("PARAM90"); writer.Int(-999999); //Custom fluid density
-			writer.Key("PARAM91"); writer.Int(-999999); //Custom fluid viscosity
-			writer.Key("PARAM92"); writer.Int(-999999); //Custom fluid concuctivity
-			writer.Key("PARAM93"); writer.Int(-999999); //Custom fluid specific heat
+writer.Key("PARAM89"); writer.Int(-999999); //Superheated water Pressure
+writer.Key("PARAM90"); writer.Int(-999999); //Custom fluid density
+writer.Key("PARAM91"); writer.Int(-999999); //Custom fluid viscosity
+writer.Key("PARAM92"); writer.Int(-999999); //Custom fluid concuctivity
+writer.Key("PARAM93"); writer.Int(-999999); //Custom fluid specific heat
 
-			writer.Key("PARAM40"); writer.Double(6); //Entering fluid temperature
-			writer.Key("PARAM45"); writer.Double(12); //Leaving fluid temperature
-			writer.Key("PARAM55"); writer.Int(-999999); //Volumetric Fluid Flow
-			writer.Key("PARAM47"); writer.Int(-999999); //Mass Fluid Flow
+writer.Key("PARAM40"); writer.Double(6); //Entering fluid temperature
+writer.Key("PARAM45"); writer.Double(12); //Leaving fluid temperature
+writer.Key("PARAM55"); writer.Int(-999999); //Volumetric Fluid Flow
+writer.Key("PARAM47"); writer.Int(-999999); //Mass Fluid Flow
 
-			writer.Key("PARAM95"); writer.Int(-999999); //diameter of header
+writer.Key("PARAM95"); writer.Int(-999999); //diameter of header
 
-			//duty
-			writer.Key("PARAM87"); writer.Double(0); //Oversurface Requested
-		
-		writer.EndObject();
-		
+//duty
+writer.Key("PARAM87"); writer.Double(0); //Oversurface Requested
+
+writer.EndObject();
 
 
-		String^ strJSONCoil;
-		//strJSONCoil = gcnew String(s.GetString());
 
-		strJSONCoil = "{""PARAM3"":1,""PARAM4"":true,""PARAM9"":-999999,""PARAM26"":84,""PARAM57"":-999999,""PARAM10"":900,""PARAM70"":0,""PARAM25"":6,""PARAM29"":2.12,""PARAM22"":1,""PARAM41"":1,""PARAM27"":31,""PARAM33"":""G"",""PARAM20"":""4S6"",""OP_01"":1,""OP_09"":2,""OP_03"":1,""OP_02"":1,""PARAM49"":7,""PARAM50"":-999999,""PARAM51"":-999999,""PARAM52"":0,""PARAM36"":42,""PARAM37"":-999999,""PARAM38"":-999999,""PARAM39"":30,""PARAM54"":18612,""PARAM46"":-999999,""PARAM34"":-999999,""PARAM97"":-999999,""PARAM99"":0,""PARAM43"":1,""PARAM89"":-999999,""PARAM90"":-999999,""PARAM91"":-999999,""PARAM92"":-999999,""PARAM93"":-999999,""PARAM40"":6.5,""PARAM45"":12.8,""PARAM55"":-999999,""PARAM47"":-999999,""PARAM95"":-999999,""PARAM87"":0}";
-		strJSONCoil = "knjdsvòlkvdsòlksdòlk";
-		CString temp = CString(strJSONCoil);
-		::MessageBox(NULL, temp, _T(""), MB_OK);
-		leelcoilsDLL::Calculation^ calcLeel = gcnew leelcoilsDLL::Calculation();
-		
-		String^ nresults = calcLeel->StartCalculation(strJSONCoil)->Trim();
-		
-		CString d = nresults;
-		::MessageBox(NULL, d, _T(""), MB_OK);
-		//if (atoi(d) > 0)
-		//{
-		System::Collections::Generic::List<System::String^>^ results;
-		std::array <String^, 100>;
-		
-		results = calcLeel->ReadResults();
-		nresults = results->ToString();
-		d = nresults;
-		::MessageBox(NULL, d, _T(""), MB_OK);
-			//String^ outputCoil = calcLeel->ReadResults();
-			//d = outputCoil;
-			//::MessageBox(NULL, d, _T(""), MB_OK);
-		//}
+String^ strJSONCoil;
+//strJSONCoil = gcnew String(s.GetString());
+
+strJSONCoil = "{""PARAM3"":1,""PARAM4"":true,""PARAM9"":-999999,""PARAM26"":84,""PARAM57"":-999999,""PARAM10"":900,""PARAM70"":0,""PARAM25"":6,""PARAM29"":2.12,""PARAM22"":1,""PARAM41"":1,""PARAM27"":31,""PARAM33"":""G"",""PARAM20"":""4S6"",""OP_01"":1,""OP_09"":2,""OP_03"":1,""OP_02"":1,""PARAM49"":7,""PARAM50"":-999999,""PARAM51"":-999999,""PARAM52"":0,""PARAM36"":42,""PARAM37"":-999999,""PARAM38"":-999999,""PARAM39"":30,""PARAM54"":18612,""PARAM46"":-999999,""PARAM34"":-999999,""PARAM97"":-999999,""PARAM99"":0,""PARAM43"":1,""PARAM89"":-999999,""PARAM90"":-999999,""PARAM91"":-999999,""PARAM92"":-999999,""PARAM93"":-999999,""PARAM40"":6.5,""PARAM45"":12.8,""PARAM55"":-999999,""PARAM47"":-999999,""PARAM95"":-999999,""PARAM87"":0}";
+strJSONCoil = "knjdsvòlkvdsòlksdòlk";
+CString temp = CString(strJSONCoil);
+::MessageBox(NULL, temp, _T(""), MB_OK);
+leelcoilsDLL::Calculation^ calcLeel = gcnew leelcoilsDLL::Calculation();
+
+String^ nresults = calcLeel->StartCalculation(strJSONCoil)->Trim();
+
+CString d = nresults;
+::MessageBox(NULL, d, _T(""), MB_OK);
+//if (atoi(d) > 0)
+//{
+System::Collections::Generic::List<System::String^>^ results;
+std::array <String^, 100>;
+
+results = calcLeel->ReadResults();
+nresults = results->ToString();
+d = nresults;
+::MessageBox(NULL, d, _T(""), MB_OK);
+//String^ outputCoil = calcLeel->ReadResults();
+//d = outputCoil;
+//::MessageBox(NULL, d, _T(""), MB_OK);
+//}
 /*
 		if (output == "") {
 			array<System::String^>^ single_result = calcLeel->ReadResults();
@@ -833,10 +833,10 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		}
 
 		*/
-	String^ err;
-	return  err;
+String^ err;
+return  err;
 }
-String^ Rooftop::GetNoiseData(String^ jSONIN) 
+String^ Rooftop::GetNoiseData(String^ jSONIN)
 {
 	std::string str = marshal_as<std::string>(jSONIN);
 	Document doc;
@@ -854,7 +854,7 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 /*	CString fantypesupply = doc["fantypesupply"].GetString();
 	CString fantypeexhaust = doc["fantypeexhaust"].GetString();
 	CString fantypeoutdoor = doc["fantypeoutdoor"].GetString();
-	
+
 	port[1] = doc["airflowexhaust"].GetDouble() / 3600.0;
 	port[0] = doc["airflowsupply"].GetDouble() / 3600.0;
 	port[2] = doc["airflowoutdoor"].GetDouble() / 3600.0;
@@ -862,6 +862,49 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	pdc[1] = doc["staticdpexh"].GetDouble();
 	pdc[0] = doc["staticdpsup"].GetDouble();
 	pdc[2] = doc["staticdpout"].GetDouble();*/
+
+	double attenuazioni[8][8];
+	//banda di ottava per:
+	//1 before supply fan
+	//2 after supply fan
+	//3 before ex.fan
+	//4 before ex.fan
+	//5 after compressore
+	//6 before condeser fan
+	//7 after condenser fan
+	//8 casing
+
+	for (int i = 0; i < 8; i++)
+	{
+		for (int j = 0; j < 8; j++)
+			attenuazioni[i][j] = 0;
+	}
+
+	Value& responseObj = doc["options"];
+	if (responseObj.IsArray())
+	{
+		for (int i = 0; i < responseObj.GetArray().Size(); i++)
+		{
+			Value& opt = responseObj[i];
+
+			if (opt.IsObject())
+			{
+				CString optcode = doc["option"].GetString();
+				double value = doc["value"].GetDouble();
+				if (value == 1)
+				{
+					double att[8];
+					short tipo = GetAttenuazioni(optcode, att);
+					if (tipo >= 1 && tipo < 9)
+					{
+						for (int j = 0; j < 8; j++)
+							attenuazioni[tipo-1][j] += att[j];
+					}
+				}
+			}
+
+		}	
+	}
 
 	double distance = doc["distance"].GetDouble();
 	double dens = doc["density"].GetDouble();
@@ -885,13 +928,9 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	double filtroA[8] = { 26.2,16.1,8.6,3.2,0,-1.2,-1,1.1 };
 	
 	//DA LEGGERE DA TABELLA
-	GetAttenuazioni(1);
-	GetAttenuazioni(2);
-	GetAttenuazioni(3);
-
-	double coilatt[8] = {1,1,1,1,1,1,1,1};
-	double mitigationcasing[8] = { 8,8,8,8,8,8,8,8 };
-	double jacket[8] = { 0,0,0,3.5,14.3,18.2,21.7,0.0 };
+	//double coilatt[8] = {1,1,1,1,1,1,1,1};
+	//double mitigationcasing[8] = { 8,8,8,8,8,8,8,8 };
+	//double jacket[8] = { 0,0,0,3.5,14.3,18.2,21.7,0.0 };
 
 	for (int i = 1; i < 9; i++)
 	{
@@ -906,8 +945,8 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	//////
 	for (int i = 1; i < 9; i++)
 	{
-		supoutband_noexV[i] = noisesupplyoutV[i] - filtroA[i - 1];
-		supinband_noexV[i] = noisesupplyinV[i] - filtroA[i - 1] - coilatt[i - 1];
+		supoutband_noexV[i] = noisesupplyoutV[i] - filtroA[i - 1] - attenuazioni[1][i - 1];
+		supinband_noexV[i] = noisesupplyinV[i] - filtroA[i - 1] - attenuazioni[0][i - 1];
 		sumlog[0] += pow(10, supoutband_noexV[i] / 10.0);
 		sumlog[1] += pow(10, supinband_noexV[i] / 10.0);
 
@@ -921,7 +960,7 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	double NoiseSupplyTot[9]; 
 	for (int i = 1; i < 9; i++)
 	{
-		NoiseSupplyTot[i] = 10 * log10(pow(10, noisesupplyoutV[i] / 10.0) + (pow(10, noisesupplyinV[i] / 10.0))) - filtroA[i - 1] - mitigationcasing[i-1];
+		NoiseSupplyTot[i] = 10 * log10(pow(10, noisesupplyoutV[i] / 10.0) + (pow(10, noisesupplyinV[i] / 10.0))) - filtroA[i - 1] - attenuazioni[7][i - 1];//mitigationcasing[i-1];
 		sumlog[2] += pow(10, NoiseSupplyTot[i] / 10.0);
 	}
 	NoiseSupplyTot[0] = 10 * log10(sumlog[2]);//Sound Power Levels OUT OF UNIT with only supply fan (dBA) = (SUPPLY fan (in) + SUPPLY fan (out)) * SUPPLY fan NUMBER - TREATMENT BOX ATTENUATION - EAR ATTENUATION
@@ -938,7 +977,7 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	////////////
 
 	double noiseCompV[9];
-	double noiseCompCOJAV[9];
+	//double noiseCompCOJAV[9];
 
 	pos1 = 0;
 	pos2 = 0;
@@ -950,39 +989,39 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	{
 		//lettura json output delle bande d'ottava di rumoristà del compressore, nella verisione con e senza jacket
 		CString noiseComp = docComp["noise"].GetString();
-		CString noiseCompCOJA = docComp["noisecoja"].GetString();
+		//CString noiseCompCOJA = docComp["noisecoja"].GetString();
 
 
 		for (int i = 0; i < 9; i++)
 		{
 			noiseCompV[i] = _tstof(ExtractString(noiseComp, &pos1, _T(";")));
-			noiseCompCOJAV[i] = _tstof(ExtractString(noiseCompCOJA, &pos2, _T(";")));
+			//noiseCompCOJAV[i] = _tstof(ExtractString(noiseCompCOJA, &pos2, _T(";")));
 		}
 		//////
 		for (int i = 1; i < 9; i++)
 		{
-			noiseCompV[i] = noiseCompV[i] - filtroA[i - 1] - coilatt[i - 1];
-			noiseCompCOJAV[i] = noiseCompCOJAV[i] - filtroA[i - 1] - coilatt[i - 1] - jacket[i - 1];
+			noiseCompV[i] = noiseCompV[i] - filtroA[i - 1] - attenuazioni[6][i - 1];
+			//noiseCompCOJAV[i] = noiseCompCOJAV[i] - filtroA[i - 1] - coilatt[i - 1] - jacket[i - 1];
 			sumlog[4] += pow(10, noiseCompV[i] / 10.0);
-			sumlog[5] += pow(10, noiseCompCOJAV[i] / 10.0);
+			//sumlog[5] += pow(10, noiseCompCOJAV[i] / 10.0);
 
 		}
 		noiseCompV[0] = 10 * log10(sumlog[4]); //Sound Power Levels SUPPLY(dBA) = SUPPLY FAN (out) * SUPPLY FAN NUMBER - EAR ATTENUATION
-		noiseCompCOJAV[0] = 10 * log10(sumlog[5]); //Sound Power Levels RETURN(dBA) = SUPPLY FAN (in) * SUPPLY FAN NUMBER - INDOOR COIL ATTENUATION - EAR ATTENUATION
+		//noiseCompCOJAV[0] = 10 * log10(sumlog[5]); //Sound Power Levels RETURN(dBA) = SUPPLY FAN (in) * SUPPLY FAN NUMBER - INDOOR COIL ATTENUATION - EAR ATTENUATION
 	}
 
 	///////
 	for (int i = 1; i < 9; i++)
 	{
-		outdoorbandV[i] = 10 * log10(pow(10, noiseCompV[i] / 10.0) + pow(10, NoiseSupplyTot[i] / 10.0) + pow(10, NoiseOutdoorTot[i] / 10.0));
-		Outdoorband_noexV[i] = 10 * log10(pow(10, noiseCompCOJAV[i] / 10.0) + pow(10, NoiseSupplyTot[i] / 10.0) + pow(10, NoiseOutdoorTot[i] / 10.0));
-		sumlog[6] += pow(10, outdoorbandV[i] / 10.0);
-		sumlog[7] += pow(10, Outdoorband_noexV[i] / 10.0);
+		Outdoorband_noexV[i] = 10 * log10(pow(10, noiseCompV[i] / 10.0) + pow(10, NoiseSupplyTot[i] / 10.0) + pow(10, NoiseOutdoorTot[i] / 10.0));
+		//Outdoorband_noexV[i] = 10 * log10(pow(10, noiseCompV[i] / 10.0) + pow(10, NoiseSupplyTot[i] / 10.0) + pow(10, NoiseOutdoorTot[i] / 10.0));
+		sumlog[6] += pow(10, Outdoorband_noexV[i] / 10.0);
+		//sumlog[7] += pow(10, Outdoorband[i] / 10.0);
 	}
-	outdoorbandV[0] = 10 * log10(sumlog[6]); //Total Sound Power Levels OUT OF UNIT (dBA)= SUPPLY FAN + CONDENSER FAN + COMPRESSOR WITHOUT JACKET 
-	Outdoorband_noexV[0] = 10 * log10(sumlog[7]); //Total Sound Power Levels OUT OF UNIT (dBA) [COJA] = SUPPLY FAN + CONDENSER FAN + COMPRESSOR WITH JACKET
+	Outdoorband_noexV[0] = 10 * log10(sumlog[6]); //Total Sound Power Levels OUT OF UNIT (dBA)= SUPPLY FAN + CONDENSER FAN + COMPRESSOR
+	//Outdoorband_noexV[0] = 10 * log10(sumlog[7]); //Total Sound Power Levels OUT OF UNIT (dBA) [COJA] = SUPPLY FAN + CONDENSER FAN + COMPRESSOR WITH JACKET
 
-	double presnoiselevel = Round(outdoorbandV[0] + 10.0 * log10(1 / (2 * PIGRECO * pow(distance,2))), 1); //è la pressione sonora totale all'esterno con compressore senza jacket
+	double presnoiselevel = Round(Outdoorband_noexV[0] + 10.0 * log10(1 / (2 * PIGRECO * pow(distance,2))), 1); //è la pressione sonora totale all'esterno con compressore 
 	//telefonata con pino 12-05-23 , cambiato in 2 * PIGRECO, è semisferico e non sferico.
 	
 	//OUTPUT
@@ -1035,16 +1074,38 @@ String^ Rooftop::GetCondeserNoise()
 	String^ err;
 	return  err;
 }
-String^ Rooftop::GetAttenuazioni(short tipo)
+short Rooftop::GetAttenuazioni(CString code, double att[])
 {
+	std::string filter = "";
+	g_NoiseAtt.AddFilterField("OptionCode", "=", code, filter);
+	//ricerco il modello e mandato o ripresa
+	CGenRecordList options = g_NoiseAtt.GetRecordList(filter);
+	CGenTableRecord noise = g_NoiseAtt.Lookup(filter);
+	short tipo = -1;
+	if (noise.IsValid())
+	{
+		noise.GetColumn("INOUT", tipo);
+		noise.GetColumn("63HZ", att[0]);
+		noise.GetColumn("125HZ", att[1]);
+		noise.GetColumn("250HZ", att[2]);
+		noise.GetColumn("500HZ", att[3]);
+		noise.GetColumn("1000HZ", att[4]);
+		noise.GetColumn("2000HZ", att[5]);
+		noise.GetColumn("4000HZ", att[6]);
+		noise.GetColumn("8000HZ", att[7]);
+	}
 	//tipo:
-	//batteria = 1
-	//casing  = 2;
-	//jacket = 3; 
-	//etc
-
-	String^ err;
-	return  err;
+	//banda di ottava per:
+	//1 before supply fan
+	//2 after supply fan
+	//3 before ex.fan
+	//4 before ex.fan
+	//5 after compressore
+	//6 before condeser fan
+	//7 after condenser fan
+	//8 casing
+	
+	return  tipo;
 }
 
 String^ Rooftop::GetNoiseData1(String^ jSONIN) 
@@ -1240,6 +1301,7 @@ bool Rooftop::Init()
 	l = OpenConnection();
 	l &= LoadModel();
 	l &= LoadCoeffPdc();
+	l &= LoadNoiseAttenuation();
 	l &= LoadEBMDll();
 
 	SetCurrentDirectory(path); //setting path
@@ -1311,6 +1373,15 @@ bool Rooftop::OpenConnection()
 		pModelRs->get_EOF(&vbEOF);
 	}
 	pModelRs->Close();*/
+}
+
+bool Rooftop::LoadNoiseAttenuation()
+{
+	CString datastr = L"SELECT RT2_ALTEC_ATTENUATION.* FROM RT2_ALTEC_ATTENUATION order by IDNOISE";
+	if (g_NoiseAtt.LoadFromDB(g_session, datastr.AllocSysString(), false))
+		return true;
+	else
+		return false;
 }
 
 bool Rooftop::LoadCoeffPdc()

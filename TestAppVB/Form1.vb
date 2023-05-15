@@ -43,7 +43,7 @@ Public Class Form1
             'CString noiseoutin = doc["noiseoutin"].GetString();
             'CString noiseoutout = doc["noiseoutout"].GetString();
 
-            Input = "{""modelid"": ""B6FHC025SP1M"",""supplierid"": 1, ""distance"": 3, ""density"": 1.2, ""temperature"": 20, ""iqngn"": 0, ""noisesupplyin"": ""80;70;60;80;70;60;80;90"", ""noisesupplyout"": ""80;70;60;80;70;60;80;90"", ""noiseoutin"": ""80;70;60;80;70;60;80;90"", ""noiseoutout"": ""80;70;60;80;70;60;80;90""}"
+            Input = "{""modelid"": ""B6FHC025SP1M"",""supplierid"": 1, ""distance"": 3, ""density"": 1.2, ""temperature"": 20, ""options"": [{""option"": ""BAUN"", ""value"": 1}, {""option"": ""ADSK"", ""value"": 1}], ""noisesupplyin"": ""80;70;60;80;70;60;80;90"", ""noisesupplyout"": ""80;70;60;80;70;60;80;90"", ""noiseoutin"": ""80;70;60;80;70;60;80;90"", ""noiseoutout"": ""80;70;60;80;70;60;80;90"", ""iqngn"": 0}"
             output = chiller.GetNoiseData(Input)
             MsgBox(output)
         End If

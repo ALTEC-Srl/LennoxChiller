@@ -42,7 +42,7 @@ CDataSource		g_Sql;
 CSession		g_session;
 CGenTable       g_ModelTable;
 CGenTable       g_CoeffPdc;
-
+CGenTable		g_NoiseAtt;
 namespace LennoxRooftop {
 
 	/*class CModelAccessor : public CADORecordBinding {
@@ -81,10 +81,11 @@ namespace LennoxRooftop {
 		String^ SearchModel(CString model, CString fanopt, double portata, int fantype);
 		bool LoadModel();
 		bool LoadCoeffPdc();
+		bool LoadNoiseAttenuation();
 		bool OpenConnection();
 		bool OpenDataSource(CString fileName, CDataSource& ds, CString provider, CString pwd);
 		String^ GetCondeserNoise();
-		String^ GetAttenuazioni(short tipo);
+		short GetAttenuazioni(CString code, double att[]);
 		
 	};
 	///////////////////////////////////////////////////////////////////////////
