@@ -657,6 +657,81 @@ String^ Rooftop::GetModelPerformance(String^ jSONIN)
 String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 {
 
+	std::string str = marshal_as<std::string>(jSONIN);
+	Document doc,doc1;
+	doc.Parse(str.c_str());
+	int errorcode = 0;
+
+	//lettura json input
+	Value& conf = doc["configuration"];
+	int iqngn = doc["iqngn"].GetInt();
+	CString sigla = "";
+	short supp = 0, coiltype = 0;
+	if (conf.IsObject())
+	{
+		CString model = conf["modelid"].GetString();
+		String^ JSONmodelspecification = SearchModel(model,"",0,1);
+		if (CString(JSONmodelspecification).IsEmpty())
+		{
+			errorcode = 1;
+		}
+		std::string str1 = "";
+		str1 = marshal_as<std::string>(JSONmodelspecification);
+		doc1.Parse(str1.c_str());
+		sigla = doc1["COIL"].GetString();
+		supp = conf["supplierid"].GetInt();
+		coiltype = conf["coiltype"].GetInt();
+	}
+
+	if (sigla.IsEmpty())
+		errorcode = 2;
+
+	double airflow = 0;
+	double airdb = 0;
+	double airwb = 0;
+	double waterin = 0;
+	double waterout = 0;
+	double waterflow = 0;
+	int fluidtype = 0;
+	int glycoletype = 0;
+	double glycoleperc = 0;
+
+	Value& responseObj = doc["conditions"];
+	//if (responseObj.IsArray()) // nella documentazione era Array, ma se ci fossero n condizioni in ingresso, dovrei aver en condizioni in uscita, e non ci sono.
+	if (responseObj.IsObject())
+	{
+		//for (int i = 0; i < responseObj.GetArray().Size(); i++)
+		//{
+		//	Value& opt = responseObj[i];
+		Value& opt = responseObj;
+			if (opt.IsObject())
+			{
+				airflow = opt["airflow"].GetDouble();
+				airdb = opt["airdb"].GetDouble();
+				airwb = opt["airwb"].GetDouble();
+				waterin = opt["waterin"].GetDouble();
+				waterout = opt["waterout"].GetDouble();
+				waterflow = opt["waterflow"].GetDouble();
+				fluidtype = opt["fluidtype"].GetInt();
+				glycoletype = opt["glycoletype"].GetInt();
+				glycoleperc = opt["glycoleperc"].GetDouble();
+
+
+			}
+
+		//}
+	}
+	if (airflow == 0)
+		errorcode = 3;
+	
+	//risultati
+	double capacity = 0, outdb = 0, outwb = 0, outhumrel = 0, airpressuredp = 0, waterinlet = 0, wateroutlet = 0, waterpressuredp = 0;
+	double valvepressuredp = 0, weight = 0, overalllength = 0, overallheight = 0;
+	CString coilname = "";
+
+	if (errorcode == 0)
+	{
+
 		leelcoilsDLL::Calculation calc;
 		std::string output;
 		std::vector<std::string> single_result;
@@ -664,8 +739,8 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		/*JObject JO;
 		JObject JOmeasure;
 		JObject JOres;
-	
-		
+
+
 		JO.Add("PARAM3", 1); // calculation - fluid
 		JO.Add("PARAM4", true); // verify coil
 
@@ -705,7 +780,7 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		JO.Add("PARAM34", -999999); // Air velocity
 		JO.Add("PARAM97", -999999); // fan select
 		JO.Add("PARAM99", 0); // fan direction
-		
+
 		//fluid
 		JO.Add("PARAM43", 1); //type fluid
 
@@ -731,117 +806,210 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		StringBuffer s;
 		Writer<StringBuffer> writer(s);
 		writer.StartObject();
+
+		writer.Key("PARAM3"); writer.Int(1); // calculation - fluid coil 
+		writer.Key("PARAM4"); writer.String("True"); // verify coil
+
+		// coil
+		short ntubi = atoi(sigla.Left(2));
+		short pos = 0;
+
+		pos = sigla.Find("-",pos);
+		short ranghi = atoi(sigla.Mid(pos+1,1));
+		pos = sigla.Find("-", pos);
+		double lencoil = atof(sigla.Mid(pos + 1, 4));
+		double pal = atof(sigla.Mid(pos + 6, 4));
+		int ncircuiti = atof(sigla.Mid(pos + 11, 2)); // quà ci sarebbe da capire se la sigla 2*ncircuiti o altro...
+
+
+		writer.Key("PARAM9"); writer.Int(-999999); // max fin height
+		writer.Key("PARAM26"); writer.Int(ntubi); // number tubes
+		writer.Key("PARAM57"); writer.Int(-999999); // fin height
+		writer.Key("PARAM10"); writer.Double(lencoil); // length fin block
+		writer.Key("PARAM70"); writer.Int(0); // Number of tubes not used in circuit
+		writer.Key("PARAM25"); writer.Int(ranghi); // number rows
+		writer.Key("PARAM29"); writer.Double(pal); // spacing
+		writer.Key("PARAM22"); writer.Int(ncircuiti); // number of circuits
+		writer.Key("PARAM41"); writer.Int(1); // Type of fluid arrangement (1 = counterflow ; 2 = Parallel flow)
+		writer.Key("PARAM27"); writer.Int(31); // number of injections (total Number of Tubes feeded from headers)
+		writer.Key("PARAM33"); writer.String("G"); // surface
+		writer.Key("PARAM20"); writer.String("4S6"); // pattern
+		writer.Key("OP_01"); writer.Int(1); // tube material
+		writer.Key("OP_09"); writer.Int(2); // tube thickness
+		writer.Key("OP_03"); writer.Int(1); // fin thickness
+		writer.Key("OP_02"); writer.Int(1); // fin material
+
+		// air type input
+		writer.Key("PARAM49"); writer.Int(1); // air conditions type
+		writer.Key("PARAM50"); writer.Int(-999999); // Moist air density
+		writer.Key("PARAM51"); writer.Int(-999999); // barometric pressure
+		writer.Key("PARAM52"); writer.Double(-999999); // altitude
+
+		// air temperatures
+		writer.Key("PARAM36"); writer.Double(airdb); // Entering Air Temperature Dry Bulb
+		writer.Key("PARAM37"); writer.Int(airwb); // Entering Air Temperature Wet Bulb
+		writer.Key("PARAM38"); writer.Int(-999999); // Entering Air Absolute Humidity
+		writer.Key("PARAM39"); writer.Double(-999999); // Entering Air Relative Humidity
+
+		// air flow
+		writer.Key("PARAM54"); writer.Double(airflow); // Volumetric Air Flow
+		writer.Key("PARAM46"); writer.Int(-999999); // Massic Air Flow - Moist air
+		writer.Key("PARAM34"); writer.Int(-999999); // Air velocity
+		writer.Key("PARAM97"); writer.Int(-999999); // fan select
+		writer.Key("PARAM99"); writer.Int(0); // fan direction
+
+		//fluid
 		
+
+		writer.Key("PARAM43"); writer.Int(fluidtype+ glycoletype); //type fluid
+		writer.Key("PARAM42"); writer.Int(glycoleperc); //type perc in kg (kg fluid / kg mixture)
+
+		writer.Key("PARAM89"); writer.Int(-999999); //Superheated water Pressure
+		writer.Key("PARAM90"); writer.Int(-999999); //Custom fluid density
+		writer.Key("PARAM91"); writer.Int(-999999); //Custom fluid viscosity
+		writer.Key("PARAM92"); writer.Int(-999999); //Custom fluid concuctivity
+		writer.Key("PARAM93"); writer.Int(-999999); //Custom fluid specific heat
+
+		writer.Key("PARAM40");
+		if (waterin == -1 && waterflow > 0)
+			 writer.Double(-999999); //Entering fluid temperature
+		else
+			writer.Double(waterin); //Entering fluid temperature
+
+		writer.Key("PARAM45");
+		if (waterout == -1 && waterflow > 0)
+			writer.Double(-999999); //Leaving fluid temperature
+		else
+			writer.Double(waterout); //Leaving fluid temperature
+		
+		writer.Key("PARAM55");
+		if (waterflow > 0)
+			 writer.Double(Round(waterflow/1000.0,3)); //Volumetric Fluid Flow
+		else
+			writer.Double(-999999); //Volumetric Fluid Flow
+
+		writer.Key("PARAM47"); writer.Int(-999999); //Mass Fluid Flow
+
+		writer.Key("PARAM95"); writer.Int(-999999); //diameter of header
+
+		//duty
+		writer.Key("PARAM87"); writer.Double(0); //Oversurface Requested
+
+		writer.EndObject();
+
+
+
+		String^ strJSONCoil;
+		strJSONCoil = gcnew String(s.GetString());
+
+		//strJSONCoil = "{""PARAM3"":1,""PARAM4"":true,""PARAM9"":-999999,""PARAM26"":84,""PARAM57"":-999999,""PARAM10"":900,""PARAM70"":0,""PARAM25"":6,""PARAM29"":2.12,""PARAM22"":1,""PARAM41"":1,""PARAM27"":31,""PARAM33"":""G"",""PARAM20"":""4S6"",""OP_01"":1,""OP_09"":2,""OP_03"":1,""OP_02"":1,""PARAM49"":7,""PARAM50"":-999999,""PARAM51"":-999999,""PARAM52"":0,""PARAM36"":42,""PARAM37"":-999999,""PARAM38"":-999999,""PARAM39"":30,""PARAM54"":18612,""PARAM46"":-999999,""PARAM34"":-999999,""PARAM97"":-999999,""PARAM99"":0,""PARAM43"":1,""PARAM89"":-999999,""PARAM90"":-999999,""PARAM91"":-999999,""PARAM92"":-999999,""PARAM93"":-999999,""PARAM40"":6.5,""PARAM45"":12.8,""PARAM55"":-999999,""PARAM47"":-999999,""PARAM95"":-999999,""PARAM87"":0}";
+		//CString temp = CString(strJSONCoil);
+		//::MessageBox(NULL, temp, _T(""), MB_OK);
+		leelcoilsDLL::Calculation^ calcLeel = gcnew leelcoilsDLL::Calculation();
+
+		String^ error = calcLeel->StartCalculation(strJSONCoil)->Trim();
+
+		CString d = error;
+		::MessageBox(NULL, d, _T(""), MB_OK);
+		//if (atoi(d) > 0)
+		//{
+		System::Collections::Generic::List<System::String^>^ results;
+		String^ result = "";
+		std::array <String^, 100>;
+		
+		if (error->IsNullOrEmpty(error))
+		{
+			results = calcLeel->ReadResults();
+			result = calcLeel->ReadResult(0);
+			d = result;
+			::MessageBox(NULL, d, _T(""), MB_OK);
+
+			std::string str = marshal_as<std::string>(result);
+			Document res;
+			res.Parse(str.c_str());
 			
-
-			writer.Key("PARAM3"); writer.Int(1); // calculation - fluid
-			writer.Key("PARAM4"); writer.String("True"); // verify coil
-
-			// coil
-			writer.Key("PARAM9"); writer.Int(-999999); // max fin height
-			writer.Key("PARAM26"); writer.Int(84); // number tubes
-			writer.Key("PARAM57"); writer.Int(-999999); // fin height
-			writer.Key("PARAM10"); writer.Double(900); // length fin block
-			writer.Key("PARAM70"); writer.Int(0); // Number of tubes not used in circuit
-			writer.Key("PARAM25"); writer.Int(6); // number rows
-			writer.Key("PARAM29"); writer.Double(2.12); // spacing
-			writer.Key("PARAM22"); writer.Int(1); // number of circuits
-			writer.Key("PARAM41"); writer.Int(1); // Type of fluid arrangement (1 = counterflow ; 2 = Parallel flow)
-			writer.Key("PARAM27"); writer.Int(31); // number of injections (total Number of Tubes feeded from headers)
-			writer.Key("PARAM33"); writer.String("G"); // surface
-			writer.Key("PARAM20"); writer.String("4S6"); // pattern
-			writer.Key("OP_01"); writer.Int(1); // tube material
-			writer.Key("OP_09"); writer.Int(2); // tube thickness
-			writer.Key("OP_03"); writer.Int(1); // fin thickness
-			writer.Key("OP_02"); writer.Int(1); // fin material
-
-			// air type input
-			writer.Key("PARAM49"); writer.Int(7); // air conditions type
-			writer.Key("PARAM50"); writer.Int(-999999); // Moist air density
-			writer.Key("PARAM51"); writer.Int(-999999); // barometric pressure
-			writer.Key("PARAM52"); writer.Double(0); // altitude
-
-			// air temperatures
-			writer.Key("PARAM36"); writer.Double(42); // Entering Air Temperature Dry Bulb
-			writer.Key("PARAM37"); writer.Int(-999999); // Entering Air Temperature Wet Bulb
-			writer.Key("PARAM38"); writer.Int(-999999); // Entering Air Absolute Humidity
-			writer.Key("PARAM39"); writer.Double(30); // Entering Air Relative Humidity
-
-			// air flow
-			writer.Key("PARAM54"); writer.Double(18612); // Volumetric Air Flow
-			writer.Key("PARAM46"); writer.Int(-999999); // Massic Air Flow - Moist air
-			writer.Key("PARAM34"); writer.Int(-999999); // Air velocity
-			writer.Key("PARAM97"); writer.Int(-999999); // fan select
-			writer.Key("PARAM99"); writer.Int(0); // fan direction
-
-//fluid
-writer.Key("PARAM43"); writer.Int(1); //type fluid
-
-writer.Key("PARAM89"); writer.Int(-999999); //Superheated water Pressure
-writer.Key("PARAM90"); writer.Int(-999999); //Custom fluid density
-writer.Key("PARAM91"); writer.Int(-999999); //Custom fluid viscosity
-writer.Key("PARAM92"); writer.Int(-999999); //Custom fluid concuctivity
-writer.Key("PARAM93"); writer.Int(-999999); //Custom fluid specific heat
-
-writer.Key("PARAM40"); writer.Double(6); //Entering fluid temperature
-writer.Key("PARAM45"); writer.Double(12); //Leaving fluid temperature
-writer.Key("PARAM55"); writer.Int(-999999); //Volumetric Fluid Flow
-writer.Key("PARAM47"); writer.Int(-999999); //Mass Fluid Flow
-
-writer.Key("PARAM95"); writer.Int(-999999); //diameter of header
-
-//duty
-writer.Key("PARAM87"); writer.Double(0); //Oversurface Requested
-
-writer.EndObject();
-
-
-
-String^ strJSONCoil;
-//strJSONCoil = gcnew String(s.GetString());
-
-strJSONCoil = "{""PARAM3"":1,""PARAM4"":true,""PARAM9"":-999999,""PARAM26"":84,""PARAM57"":-999999,""PARAM10"":900,""PARAM70"":0,""PARAM25"":6,""PARAM29"":2.12,""PARAM22"":1,""PARAM41"":1,""PARAM27"":31,""PARAM33"":""G"",""PARAM20"":""4S6"",""OP_01"":1,""OP_09"":2,""OP_03"":1,""OP_02"":1,""PARAM49"":7,""PARAM50"":-999999,""PARAM51"":-999999,""PARAM52"":0,""PARAM36"":42,""PARAM37"":-999999,""PARAM38"":-999999,""PARAM39"":30,""PARAM54"":18612,""PARAM46"":-999999,""PARAM34"":-999999,""PARAM97"":-999999,""PARAM99"":0,""PARAM43"":1,""PARAM89"":-999999,""PARAM90"":-999999,""PARAM91"":-999999,""PARAM92"":-999999,""PARAM93"":-999999,""PARAM40"":6.5,""PARAM45"":12.8,""PARAM55"":-999999,""PARAM47"":-999999,""PARAM95"":-999999,""PARAM87"":0}";
-strJSONCoil = "knjdsvòlkvdsòlksdòlk";
-CString temp = CString(strJSONCoil);
-::MessageBox(NULL, temp, _T(""), MB_OK);
-leelcoilsDLL::Calculation^ calcLeel = gcnew leelcoilsDLL::Calculation();
-
-String^ nresults = calcLeel->StartCalculation(strJSONCoil)->Trim();
-
-CString d = nresults;
-::MessageBox(NULL, d, _T(""), MB_OK);
-//if (atoi(d) > 0)
-//{
-System::Collections::Generic::List<System::String^>^ results;
-std::array <String^, 100>;
-
-results = calcLeel->ReadResults();
-nresults = results->ToString();
-d = nresults;
-::MessageBox(NULL, d, _T(""), MB_OK);
-//String^ outputCoil = calcLeel->ReadResults();
-//d = outputCoil;
-//::MessageBox(NULL, d, _T(""), MB_OK);
-//}
-/*
-		if (output == "") {
-			array<System::String^>^ single_result = calcLeel->ReadResults();
-
-			if (single_result->Length > 0) {
-				JOres = Newtonsoft::Json::JsonConvert::DeserializeObject(single_result[0]);
-			}
+			capacity = res["OUT_91"].GetDouble();
+			outdb = res["OUT_05"].GetDouble();
+			outwb = res["OUT_06"].GetDouble();
+			outhumrel = res["OUT_08"].GetDouble();
+			airpressuredp = res["OUT_224"].GetDouble(); //wet
+			waterinlet = res["OUT_15"].GetDouble();
+			wateroutlet = res["OUT_16"].GetDouble();
+			waterflow = res["OUT_17"].GetDouble()*1000.0;
+			waterpressuredp = res["OUT_21"].GetDouble();
+			//valvepressuredp ?????  Fluid pressure Drop - Headers
+			coilname = res["OUT_46"].GetString(); 
+			weight = 0; //??????
+			//sono alettati...non ci sono i fuori tutto
+			overalllength  = res["OUT_31"].GetDouble();
+			overallheight = res["OUT_27"].GetDouble();
 		}
+		else
+			errorcode = atoi(d);
+
+		
+		//d = nresults;
+		//::MessageBox(NULL, d, _T(""), MB_OK);
+		//String^ outputCoil = calcLeel->ReadResults();
+		//d = outputCoil;
+		//::MessageBox(NULL, d, _T(""), MB_OK);
+		//}
+		
+		/*
+				if (output == "") {
+					array<System::String^>^ single_result = calcLeel->ReadResults();
+
+					if (single_result->Length > 0) {
+						JOres = Newtonsoft::Json::JsonConvert::DeserializeObject(single_result[0]);
+					}
+				}
 
 		*/
-String^ err;
-return  err;
+	}
+
+	StringBuffer s;
+	Writer<StringBuffer> writer(s);
+
+	writer.StartObject();
+		writer.Key("result");
+		writer.StartObject();
+			writer.Key("performance");
+			writer.StartObject();
+				writer.Key("capacity"); writer.Double(capacity);
+				writer.Key("outdb"); writer.Double(outdb);
+				writer.Key("outwb"); writer.Double(outwb);
+				writer.Key("outhumrel"); writer.Double(outhumrel);
+				writer.Key("airpressuredp"); writer.Double(airpressuredp);
+				writer.Key("waterinlet"); writer.Double(waterinlet);
+				writer.Key("wateroutlet"); writer.Double(wateroutlet);
+				writer.Key("waterflow"); writer.Double(waterflow);
+				writer.Key("waterpressuredp"); writer.Double(waterpressuredp);
+				writer.Key("valvepressuredp"); writer.Double(valvepressuredp);
+			writer.EndObject();
+			writer.Key("configuration");
+			writer.StartObject();
+				writer.Key("coilname"); writer.String(coilname);
+				writer.Key("weight"); writer.Double(weight);
+				writer.Key("overalllength"); writer.Double(overalllength);
+				writer.Key("overallheight"); writer.Double(overallheight);
+			writer.EndObject();
+		writer.Key("errorid"); writer.Int(errorcode);
+		writer.Key("version");  writer.String(VERSION);
+
+	writer.EndObject();
+	writer.EndObject();
+
+
+	String^ jsoinrecordset;
+	jsoinrecordset = gcnew String(s.GetString());
+	return  jsoinrecordset;
 }
 String^ Rooftop::GetNoiseData(String^ jSONIN)
 {
 	std::string str = marshal_as<std::string>(jSONIN);
 	Document doc;
 	doc.Parse(str.c_str());
-	int errorcode = 0;
+ 	int errorcode = 0;
 
 	//lettura json input
 	double port[3] = { 0,0,0 };
@@ -889,8 +1057,8 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 
 			if (opt.IsObject())
 			{
-				CString optcode = doc["option"].GetString();
-				double value = doc["value"].GetDouble();
+				CString optcode = opt["option"].GetString();
+				double value = opt["value"].GetDouble();
 				if (value == 1)
 				{
 					double att[8];
@@ -1032,7 +1200,7 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	for (int i = 0; i < 9; i++)
 	{
 		CString temp,temp1,temp2;
-		temp.Format("%.1f;", outdoorbandV[i]);
+		temp.Format("%.1f;", Outdoorband_noexV[i]);
 		temp1.Format("%.1f;", NoiseSupplyTot[i]);
 		Outdoorband_noex += temp;
 		supoutband_noex += temp1;
@@ -1550,8 +1718,11 @@ String^ Rooftop::SearchModel(CString model, CString fanopt, double portata, int 
 	
 
 
-	if (portata < portmin || portata > portmax)
+	if ((portata < portmin || portata > portmax) && portata > 0)
 		return jsoinrecordset;
+
+	CString coil;
+	modello.GetColumn("Indoor_Exchanger", coil);
 
 	//cerco corrispondenza tra nome modello e codice articolo preso da dll:
 	std::string str = (g_elencoEBMJson);
@@ -1572,7 +1743,8 @@ String^ Rooftop::SearchModel(CString model, CString fanopt, double portata, int 
 	writer.Key("FANMODEL"); writer.String(test);
 	writer.Key("FANCODE"); writer.String(codart);
 	writer.Key("FANNUMBER"); writer.Int(nfan);
-
+	writer.Key("COIL");  writer.String(coil);
+	
 	writer.EndObject();
 	
 	jsoinrecordset = gcnew String(s.GetString());
