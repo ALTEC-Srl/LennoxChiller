@@ -52,7 +52,15 @@ Public Class Form1
 
     Private Sub Button5_Click(sender As Object, e As EventArgs) Handles Button5.Click
         Dim Input As String
-        chiller.GetWaterCoilPerformance(Input)
+        Dim output As String
+        If init Then
+            Input = "{ ""configuration"":{ ""modelid"" :  ""B6FHC025SP1M"", ""supplierid"": 1 , ""coiltype"":1 }, ""conditions"": { ""airflow"": 4200, ""airdb"":27, ""airwb"": 19, ""waterin"": 7, ""waterout"":12, ""waterflow"": -1, ""fluidtype"": 1, ""glycoletype"": 0, ""glycoleperc"": 0	}, ""iqngn"":1 } "
+
+
+            output = chiller.GetWaterCoilPerformance(Input)
+            MsgBox(output)
+        End If
+
 
         'da aggiungere nei riferimenti se si vuole provare direttamente da VB, modificare nome assembly in:ExampleExternal
         ' Dim calc As leelcoilsDLL.Calculation

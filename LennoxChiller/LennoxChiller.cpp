@@ -186,6 +186,9 @@ void DisplayOLEDBErrorRecords(HRESULT hrErr = S_OK)
 
 String^ Rooftop::GetFanPerformance(String^ jSONIN)
 {
+	if (jSONIN == "")
+		return jSONIN;
+
     std::string str = marshal_as<std::string>(jSONIN);
 
     // lettura dei risultati
@@ -656,7 +659,8 @@ String^ Rooftop::GetModelPerformance(String^ jSONIN)
 
 String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 {
-
+	if (jSONIN == "")
+		return jSONIN;
 	std::string str = marshal_as<std::string>(jSONIN);
 	Document doc,doc1;
 	doc.Parse(str.c_str());
@@ -816,7 +820,7 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 
 		pos = sigla.Find("-",pos);
 		short ranghi = atoi(sigla.Mid(pos+1,1));
-		pos = sigla.Find("-", pos);
+		pos = sigla.Find("-", pos+1);
 		double lencoil = atof(sigla.Mid(pos + 1, 4));
 		double pal = atof(sigla.Mid(pos + 6, 4));
 		int ncircuiti = atof(sigla.Mid(pos + 11, 2)); // quà ci sarebbe da capire se la sigla 2*ncircuiti o altro...
@@ -862,7 +866,11 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		
 
 		writer.Key("PARAM43"); writer.Int(fluidtype+ glycoletype); //type fluid
-		writer.Key("PARAM42"); writer.Int(glycoleperc); //type perc in kg (kg fluid / kg mixture)
+		writer.Key("PARAM42");
+		if (glycoleperc == 0)
+			writer.Int(-999999); //type perc in kg (kg fluid / kg mixture)
+		else
+			writer.Int(glycoleperc); //type perc in kg (kg fluid / kg mixture)
 
 		writer.Key("PARAM89"); writer.Int(-999999); //Superheated water Pressure
 		writer.Key("PARAM90"); writer.Int(-999999); //Custom fluid density
@@ -910,7 +918,7 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		String^ error = calcLeel->StartCalculation(strJSONCoil)->Trim();
 
 		CString d = error;
-		::MessageBox(NULL, d, _T(""), MB_OK);
+		//::MessageBox(NULL, d, _T(""), MB_OK);
 		//if (atoi(d) > 0)
 		//{
 		System::Collections::Generic::List<System::String^>^ results;
@@ -920,6 +928,7 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		if (error->IsNullOrEmpty(error))
 		{
 			results = calcLeel->ReadResults();
+			//DA TESTARE - al momento ho testato il calcolo con il json di input qui definito  nel progetto di esempio della dll e funziona.
 			result = calcLeel->ReadResult(0);
 			d = result;
 			::MessageBox(NULL, d, _T(""), MB_OK);
@@ -1006,6 +1015,8 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 }
 String^ Rooftop::GetNoiseData(String^ jSONIN)
 {
+	if (jSONIN == "")
+		return jSONIN;
 	std::string str = marshal_as<std::string>(jSONIN);
 	Document doc;
 	doc.Parse(str.c_str());
@@ -1283,6 +1294,8 @@ String^ Rooftop::GetNoiseData1(String^ jSONIN)
 }
 String^ Rooftop::GetOptionsPressureDrop(String^ jSONIN) 
 {
+	if (jSONIN == "")
+		return jSONIN;
 	std::string str = marshal_as<std::string>(jSONIN);
 	Document doc;
 	doc.Parse(str.c_str());
