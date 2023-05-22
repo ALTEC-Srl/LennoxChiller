@@ -48,7 +48,8 @@
     <OptionInfer>On</OptionInfer>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="LennoxRooftop">
+    <Reference Include="LennoxRooftop, Version=1.0.8542.26267, Culture=neutral, processorArchitecture=x86">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\LennoxChiller\Debug\LennoxRooftop.dll</HintPath>
     </Reference>
     <Reference Include="System" />
@@ -63,6 +64,7 @@
     <Reference Include="System.Net.Http" />
   </ItemGroup>
   <ItemGroup>
+    <Import Include="LennoxRooftop" />
     <Import Include="Microsoft.VisualBasic" />
     <Import Include="System" />
     <Import Include="System.Collections" />

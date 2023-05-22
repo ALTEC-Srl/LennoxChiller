@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "LennoxChiller.h"
 
+//#pragma comment(linker, "/VERSION:\"1.0.0.0\"")
+//#pragma comment(linker, "/ASSEMBLYNAME:\"LennoxRooftop\"")
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 HMODULE		g_EbmPapstFanDLL = NULL;
@@ -8,10 +10,10 @@ PEBMPAPSTFAN_FNCT1	GET_PRODUCTS_PC = NULL;
 PEBMPAPSTFAN_FNCT6	GET_TECHNICAL_DATA_PC = NULL;
 PEBMPAPSTFAN_FNCT6	GET_CALCULATION_FAN_ALONE_PC = NULL;
 PEBMPAPSTFAN_FNCT6	SEARCH_PRODUCTS = NULL;
-PEBMPAPSTFAN_FNCT7	GET_CALCULATION_FANMOTOR = NULL;
+PEBMPAPSTFAN_FNCT7	GET_CALCULATION_FANMOTOR = NULL;   
 PEBMPAPSTFAN_FNCT6	GET_GRAPH_PFA_PC = NULL;
 PEBMPAPSTFAN_FNCT18	GET_FAN_CURVE = NULL;
-PEBMPAPSTFAN_FNCT6	GET_GRAPH_N_PC = NULL;
+PEBMPAPSTFAN_FNCT6	GET_GRAPH_N_PC = NULL; 
 PEBMPAPSTFAN_FNCT6	GET_GRAPH_ETA_PC = NULL;
 PEBMPAPSTFAN_FNCT6	GET_GRAPH_POWER_PC = NULL;
 PEBMPAPSTFAN_FNCT6	GET_GRAPH_SOUND_PC = NULL;
@@ -95,7 +97,7 @@ CString ExtractString(const CString& str, int* pos, const CString& c2seek = _T("
 	int pos1 = str.Find(c2seek, *pos);
 	if (!start.IsEmpty())
 	{
-		*pos = str.Find(start, *pos) + 1;
+		*pos = str.Find(start, *pos) + 1; 
 	}
 	if (pos1 == -1)
 	{
@@ -661,6 +663,8 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 {
 	if (jSONIN == "")
 		return jSONIN;
+	String^ nomeassembly = System::Reflection::Assembly::GetExecutingAssembly()->GetName()->Name;
+
 	std::string str = marshal_as<std::string>(jSONIN);
 	Document doc,doc1;
 	doc.Parse(str.c_str());
@@ -914,6 +918,7 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		//CString temp = CString(strJSONCoil);
 		//::MessageBox(NULL, temp, _T(""), MB_OK);
 		leelcoilsDLL::Calculation^ calcLeel = gcnew leelcoilsDLL::Calculation();
+		  
 
 		String^ error = calcLeel->StartCalculation(strJSONCoil)->Trim();
 
@@ -1486,6 +1491,7 @@ bool Rooftop::Init()
 	l &= LoadEBMDll();
 
 	SetCurrentDirectory(path); //setting path
+
 	//::MessageBox(NULL, path, _T(""), MB_OK);
 	return l;
 }
