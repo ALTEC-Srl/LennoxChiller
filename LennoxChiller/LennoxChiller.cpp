@@ -677,8 +677,9 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 	short supp = 0, coiltype = 0;
 	if (conf.IsObject())
 	{
+		bool pre = true;
 		CString model = conf["modelid"].GetString();
-		String^ JSONmodelspecification = SearchModel(model,"",0,1);
+		String^ JSONmodelspecification = SearchModel(model,"",0, pre ? 10 : 11);
 		if (CString(JSONmodelspecification).IsEmpty())
 		{
 			errorcode = 1;
@@ -688,7 +689,7 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		doc1.Parse(str1.c_str());
 		sigla = doc1["COIL"].GetString();
 		supp = conf["supplierid"].GetInt();
-		coiltype = conf["coiltype"].GetInt();
+		//coiltype = conf["coiltype"].GetInt();
 	}
 
 	if (sigla.IsEmpty())
@@ -928,35 +929,40 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		//{
 		System::Collections::Generic::List<System::String^>^ results;
 		String^ result = "";
+		String^ result1 = "";
 		std::array <String^, 100>;
 		
 		if (error->IsNullOrEmpty(error))
 		{
 			results = calcLeel->ReadResults();
-			//DA TESTARE - al momento ho testato il calcolo con il json di input qui definito  nel progetto di esempio della dll e funziona.
-			result = calcLeel->ReadResult(0);
-			d = result;
-			::MessageBox(NULL, d, _T(""), MB_OK);
+			if (results->Count > 0)
+			{
+				//DA TESTARE - al momento ho testato il calcolo con il json di input qui definito  nel progetto di esempio della dll e funziona.
+				result = results[0];
+				result1 = result->Replace("'", "\"");
 
-			std::string str = marshal_as<std::string>(result);
-			Document res;
-			res.Parse(str.c_str());
-			
-			capacity = res["OUT_91"].GetDouble();
-			outdb = res["OUT_05"].GetDouble();
-			outwb = res["OUT_06"].GetDouble();
-			outhumrel = res["OUT_08"].GetDouble();
-			airpressuredp = res["OUT_224"].GetDouble(); //wet
-			waterinlet = res["OUT_15"].GetDouble();
-			wateroutlet = res["OUT_16"].GetDouble();
-			waterflow = res["OUT_17"].GetDouble()*1000.0;
-			waterpressuredp = res["OUT_21"].GetDouble();
-			//valvepressuredp ?????  Fluid pressure Drop - Headers
-			coilname = res["OUT_46"].GetString(); 
-			weight = 0; //??????
-			//sono alettati...non ci sono i fuori tutto
-			overalllength  = res["OUT_31"].GetDouble();
-			overallheight = res["OUT_27"].GetDouble();
+				std::string str = marshal_as<std::string>(result1);
+				Document res;
+				res.Parse(str.c_str());
+				CString temp;
+				capacity = FormatString(res["OUT_91"].GetString());
+				
+
+				outdb = FormatString(res["OUT_05"].GetString());
+				outwb = FormatString(res["OUT_06"].GetString());
+				outhumrel = FormatString(res["OUT_08"].GetString());
+				airpressuredp = FormatString(res["OUT_224"].GetString()); //wet
+				waterinlet = FormatString(res["OUT_15"].GetString());
+				wateroutlet = FormatString(res["OUT_16"].GetString());
+				waterflow = FormatString(res["OUT_17"].GetString()) * 1000.0;
+				waterpressuredp = FormatString(res["OUT_21"].GetString());
+				//valvepressuredp ?????  Fluid pressure Drop - Headers
+				coilname = res["OUT_46"].GetString();
+				weight = 0; //??????
+				//sono alettati...non ci sono i fuori tutto
+				overalllength = FormatString(res["OUT_31"].GetString());
+				overallheight = FormatString(res["OUT_27"].GetString());
+			}
 		}
 		else
 			errorcode = atoi(d);
@@ -1018,6 +1024,13 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 	jsoinrecordset = gcnew String(s.GetString());
 	return  jsoinrecordset;
 }
+
+double Rooftop::FormatString(CString temp)
+{
+	temp.Replace(",", ".");
+	return atof(temp);
+}
+
 String^ Rooftop::GetNoiseData(String^ jSONIN)
 {
 	if (jSONIN == "")
@@ -1740,8 +1753,9 @@ String^ Rooftop::SearchModel(CString model, CString fanopt, double portata, int 
 	if ((portata < portmin || portata > portmax) && portata > 0)
 		return jsoinrecordset;
 
-	CString coil;
-	modello.GetColumn("Indoor_Exchanger", coil);
+	CString coil ="";
+
+	modello.GetColumn("Coil_pre_string", coil);
 
 	//cerco corrispondenza tra nome modello e codice articolo preso da dll:
 	std::string str = (g_elencoEBMJson);

@@ -6,6 +6,11 @@ Public Class Form1
 
     Private Sub Button2_Click(sender As Object, e As EventArgs) Handles Button2.Click
         init = chiller.Init()
+        If Not init Then
+            MsgBox("init failed")
+        Else
+            MsgBox("init ok")
+        End If
     End Sub
 
     Private Sub Button1_Click(sender As Object, e As EventArgs) Handles Button1.Click
