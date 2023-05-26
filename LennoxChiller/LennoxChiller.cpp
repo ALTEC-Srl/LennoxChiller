@@ -218,6 +218,7 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 
 	//recupero le informazioni nel database interno LENNOX in base all'idmodello richiesto
 	//ritorna un json creato con i dati di ritorno del recordset
+	
 	String^ JSONmodelspecification = SearchModel(model, fanopt, port*3600.0, fantype);
 	if (CString(JSONmodelspecification).IsEmpty())
 	{
@@ -248,13 +249,17 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 	g_CoeffPdc.AddFilterField("Flow_stream", "=", 1, filter);
 	g_CoeffPdc.AddFilterField("SupplyDP_code", "=", casingcode, filter);
 	//ricerco il modello e mandato o ripresa
+	::MessageBox(NULL, filter.c_str(), _T(""), MB_OK);
+
 	option = g_CoeffPdc.Lookup(filter);
-	
-	option.GetColumn("a", a);
-	option.GetColumn("b", b);
-	option.GetColumn("c", c);
-	option.GetColumn("d", d);
-	option.GetColumn("e", e);
+	if (option.IsValid())
+	{
+		option.GetColumn("a", a);
+			option.GetColumn("b", b);
+			option.GetColumn("c", c);
+			option.GetColumn("d", d);
+			option.GetColumn("e", e);
+	}
 	double pdcCasing = a * pow(port, 4) + b * pow(port, 3) + c * pow(port, 2) + d * port + e;
 	pdcCasing = Round(pdcCasing, 1);
 	if (pdcCasing <= 0)
@@ -679,7 +684,11 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 	{
 		bool pre = true;
 		CString model = conf["modelid"].GetString();
-		String^ JSONmodelspecification = SearchModel(model,"",0, pre ? 10 : 11);
+		supp = conf["supplierid"].GetInt();
+		coiltype = conf["coiltype"].GetInt();
+		//gf 26-05-23 MEANING???
+		// 0::eRecovery 1: hot water LC 2 : hot water MC : 3 : hot water HC 4 : cooling coil
+		String^ JSONmodelspecification = SearchModel(model,"",0, coiltype == 1 ? 10 : 11);
 		if (CString(JSONmodelspecification).IsEmpty())
 		{
 			errorcode = 1;
@@ -688,8 +697,7 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		str1 = marshal_as<std::string>(JSONmodelspecification);
 		doc1.Parse(str1.c_str());
 		sigla = doc1["COIL"].GetString();
-		supp = conf["supplierid"].GetInt();
-		//coiltype = conf["coiltype"].GetInt();
+	
 	}
 
 	if (sigla.IsEmpty())
@@ -1756,6 +1764,8 @@ String^ Rooftop::SearchModel(CString model, CString fanopt, double portata, int 
 	CString coil ="";
 
 	modello.GetColumn("Coil_pre_string", coil);
+	if (fantype == 11)
+		modello.GetColumn("Coil_post_string", coil);
 
 	//cerco corrispondenza tra nome modello e codice articolo preso da dll:
 	std::string str = (g_elencoEBMJson);
