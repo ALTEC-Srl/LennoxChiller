@@ -85,7 +85,7 @@ namespace LennoxRooftop {
 		bool OpenConnection();
 		bool OpenDataSource(CString fileName, CDataSource& ds, CString provider, CString pwd);
 		String^ GetCondeserNoise();
-		short GetAttenuazioni(CString code, double att[]);
+		short GetAttenuazioni(CString code, double attenuazioni[8][8]);
 		double FormatString(CString temp);
 		
 	};

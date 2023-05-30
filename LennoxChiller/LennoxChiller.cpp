@@ -211,8 +211,9 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 	CString fanmodel = "";
 	CString fanname = "";
 	std::string str1 = "";
+	std::string filter1 = "";
 	std::string filter = "";
-	CString casingcode = "BAUN";
+	CString casingcode[5] = {"BAUN","INDC","OUTC","MIXB", "WLRH"};
 	CGenTableRecord option;
 	double a = 0, b = 0, c = 0, d = 0, e = 0;
 
@@ -233,8 +234,8 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 	 fanname = doc["FANMODEL"].GetString();
 	
 	//da recuperare in tabella ALTEC_definition?? gf 21-04-23
-	double maxWidth = 10000; //doc["maxWidth"].GetDouble();
-	double maxHeigth = 10000;// doc["maxHeigth"].GetDouble();
+	double maxWidth = doc["W"].GetDouble();
+	double maxHeigth = doc["H"].GetDouble();
 	
 
 
@@ -244,28 +245,34 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 		goto exit;
 	}
 	
-	
+	double pdcInternal = 0;
 	g_CoeffPdc.AddFilterField("Nomcomm", "=", model, filter);
 	g_CoeffPdc.AddFilterField("Flow_stream", "=", 1, filter);
-	g_CoeffPdc.AddFilterField("SupplyDP_code", "=", casingcode, filter);
-	//ricerco il modello e mandato o ripresa
-	::MessageBox(NULL, filter.c_str(), _T(""), MB_OK);
-
-	option = g_CoeffPdc.Lookup(filter);
-	if (option.IsValid())
+	filter1 = filter;
+	for (int i = 0; i < 5; i++)
 	{
-		option.GetColumn("a", a);
+		g_CoeffPdc.AddFilterField("SupplyDP_code", "=", casingcode[i], filter);
+		//ricerco il modello e mandato o ripresa
+		//::MessageBox(NULL, filter.c_str(), _T(""), MB_OK);
+
+		option = g_CoeffPdc.Lookup(filter);
+		if (option.IsValid())
+		{
+			option.GetColumn("a", a);
 			option.GetColumn("b", b);
 			option.GetColumn("c", c);
 			option.GetColumn("d", d);
 			option.GetColumn("e", e);
+		}
+		double pdcCasing = a * pow(port, 4) + b * pow(port, 3) + c * pow(port, 2) + d * port + e;
+		pdcCasing = Round(pdcCasing, 1);
+		if (pdcCasing <= 0)
+			errorcode = 3;
+		if (pdcCasing > 300)
+			errorcode = 3;
+		pdcInternal += pdcCasing;
+		filter = filter1;
 	}
-	double pdcCasing = a * pow(port, 4) + b * pow(port, 3) + c * pow(port, 2) + d * port + e;
-	pdcCasing = Round(pdcCasing, 1);
-	if (pdcCasing <= 0)
-		errorcode = 3;
-	if (pdcCasing > 300)
-		errorcode = 3;
 	
 
 	double nfunzi = 0;
@@ -393,7 +400,7 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 				double port1 = port / nfan;
 				double pressh = maxpd;
 				if (fantype == 1 || fantype == 2)
-					pressh -= pdcCasing;
+					pressh -= pdcInternal;
 
 				double pressl = 0;
 				double presss = (pressl + pressh) / 2.0;
@@ -973,8 +980,11 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 			}
 		}
 		else
+		{
 			errorcode = atoi(d);
-
+			if (errorcode == 0)
+				errorcode = -999;
+		}
 		
 		//d = nresults;
 		//::MessageBox(NULL, d, _T(""), MB_OK);
@@ -1098,13 +1108,7 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 				double value = opt["value"].GetDouble();
 				if (value == 1)
 				{
-					double att[8];
-					short tipo = GetAttenuazioni(optcode, att);
-					if (tipo >= 1 && tipo < 9)
-					{
-						for (int j = 0; j < 8; j++)
-							attenuazioni[tipo-1][j] += att[j];
-					}
+					short tipo = GetAttenuazioni(optcode, attenuazioni);
 				}
 			}
 
@@ -1127,11 +1131,20 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	int pos1 = 0;
 	int pos2 = 0;
 	int pos3 = 0;
+	int pos4 = 0;
+	int pos5 = 0;
 	double noisesupplyinV[9];
 	double noisesupplyoutV[9];
 	double noiseoutoutV[9];
+	double noiseretinV[9] = { 0,0,0,0,0,0,0,0.0};;
+	double noisesretoutV[9] = { 0,0,0,0,0,0,0,0.0 };;
 	double filtroA[8] = { 26.2,16.1,8.6,3.2,0,-1.2,-1,1.1 };
-	
+	bool breturnfan = false;
+
+	if (!noiseretin.IsEmpty())
+	{
+		breturnfan = true;
+	}
 	//DA LEGGERE DA TABELLA
 	//double coilatt[8] = {1,1,1,1,1,1,1,1};
 	//double mitigationcasing[8] = { 8,8,8,8,8,8,8,8 };
@@ -1142,6 +1155,12 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 		noisesupplyinV[i] = _tstof(ExtractString(noisesupplyin, &pos1, _T(";")));
 		noisesupplyoutV[i] = _tstof(ExtractString(noisesupplyout, &pos2, _T(";")));
 		noiseoutoutV[i] = _tstof(ExtractString(noiseoutout, &pos3, _T(";")));
+		if (breturnfan)
+		{
+			noiseretinV[i] = _tstof(ExtractString(noiseoutin, &pos4, _T(";")));
+			noisesretoutV[i] = _tstof(ExtractString(noiseoutout, &pos5, _T(";")));
+		}
+		
 	}
 	
 	//CALCULATION
@@ -1154,14 +1173,27 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 		supinband_noexV[i] = noisesupplyinV[i] - filtroA[i - 1] - attenuazioni[0][i - 1];
 		sumlog[0] += pow(10, supoutband_noexV[i] / 10.0);
 		sumlog[1] += pow(10, supinband_noexV[i] / 10.0);
+		if (breturnfan)
+		{
+			retoutbandV[i] = noisesretoutV[i] - filtroA[i - 1] - attenuazioni[3][i - 1];
+			retinbandV[i] = noiseretinV[i] - filtroA[i - 1] - attenuazioni[2][i - 1];
+			sumlog[8] += pow(10, retoutbandV[i] / 10.0);
+			sumlog[9] += pow(10, retinbandV[i] / 10.0);
+		}
 
 	}
 	supoutband_noexV[0] = 10 * log10(sumlog[0]); //Sound Power Levels SUPPLY(dBA) = SUPPLY FAN (out) * SUPPLY FAN NUMBER - EAR ATTENUATION
 	supinband_noexV[0] = 10 * log10(sumlog[1]); //Sound Power Levels RETURN(dBA) = SUPPLY FAN (in) * SUPPLY FAN NUMBER - INDOOR COIL ATTENUATION - EAR ATTENUATION
+	if (breturnfan)
+	{
+		retoutbandV[0] = 10 * log10(sumlog[8]); //Sound Power Levels SUPPLY(dBA) = RETURN FAN (out) * RETURN FAN NUMBER - EAR ATTENUATION
+		retinbandV[0] = 10 * log10(sumlog[9]); //Sound Power Levels RETURN(dBA) = RETURN FAN (in) * RETURN FAN NUMBER - INDOOR COIL ATTENUATION - EAR ATTENUATION
+	}
 	////////
 	
 	//non sono sicuro dell'associazione tra risultati calcolati in excel e output definiti nella documentazione.
 	////////////
+
 	double NoiseSupplyTot[9]; 
 	for (int i = 1; i < 9; i++)
 	{
@@ -1180,6 +1212,17 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	}
 	NoiseOutdoorTot[0] = 10 * log10(sumlog[3]); //Sound Power Levels OUT OF UNIT with only condensing fan (dBA) = CONDENSER fan (out) - EAR ATTENUATION
 	////////////
+	double NoiseRetTot[9];
+
+	if (breturnfan)
+	{	
+		for (int i = 1; i < 9; i++)
+		{
+			NoiseRetTot[i] = 10 * log10(pow(10, noisesretoutV[i] / 10.0) + (pow(10, noiseretinV[i] / 10.0))) - filtroA[i - 1] - attenuazioni[7][i - 1];//mitigationcasing[i-1];
+			sumlog[7] += pow(10, NoiseRetTot[i] / 10.0);
+		}
+		NoiseRetTot[0] = 10 * log10(sumlog[7]);//Sound Power Levels OUT OF UNIT with only supply fan (dBA) = (SUPPLY fan (in) + SUPPLY fan (out)) * SUPPLY fan NUMBER - TREATMENT BOX ATTENUATION - EAR ATTENUATION
+	}
 
 	double noiseCompV[9];
 	//double noiseCompCOJAV[9];
@@ -1216,17 +1259,20 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	}
 
 	///////
+	
+	
 	for (int i = 1; i < 9; i++)
 	{
-		Outdoorband_noexV[i] = 10 * log10(pow(10, noiseCompV[i] / 10.0) + pow(10, NoiseSupplyTot[i] / 10.0) + pow(10, NoiseOutdoorTot[i] / 10.0));
+		Outdoorband_noexV[i] = 10 * log10(pow(10, noiseCompV[i] / 10.0) + pow(10, NoiseSupplyTot[i] / 10.0) + pow(10, NoiseOutdoorTot[i] / 10.0) + pow(10, NoiseRetTot[i] / 10.0));
 		//Outdoorband_noexV[i] = 10 * log10(pow(10, noiseCompV[i] / 10.0) + pow(10, NoiseSupplyTot[i] / 10.0) + pow(10, NoiseOutdoorTot[i] / 10.0));
 		sumlog[6] += pow(10, Outdoorband_noexV[i] / 10.0);
 		//sumlog[7] += pow(10, Outdoorband[i] / 10.0);
 	}
 	Outdoorband_noexV[0] = 10 * log10(sumlog[6]); //Total Sound Power Levels OUT OF UNIT (dBA)= SUPPLY FAN + CONDENSER FAN + COMPRESSOR
 	//Outdoorband_noexV[0] = 10 * log10(sumlog[7]); //Total Sound Power Levels OUT OF UNIT (dBA) [COJA] = SUPPLY FAN + CONDENSER FAN + COMPRESSOR WITH JACKET
-
+	
 	double presnoiselevel = Round(Outdoorband_noexV[0] + 10.0 * log10(1 / (2 * PIGRECO * pow(distance,2))), 1); //è la pressione sonora totale all'esterno con compressore 
+	
 	//telefonata con pino 12-05-23 , cambiato in 2 * PIGRECO, è semisferico e non sferico.
 	
 	//OUTPUT
@@ -1236,11 +1282,26 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	
 	for (int i = 0; i < 9; i++)
 	{
-		CString temp,temp1,temp2;
+		CString temp, temp1, temp2, temp3, temp4;
 		temp.Format("%.1f;", Outdoorband_noexV[i]);
-		temp1.Format("%.1f;", NoiseSupplyTot[i]);
-		Outdoorband_noex += temp;
-		supoutband_noex += temp1;
+		temp1.Format("%.1f;", supoutband_noexV[i]);
+		temp2.Format("%.1f;", supinband_noexV[i]);
+		temp3.Format("%.1f;", retoutband_noexV[i]);
+		temp4.Format("%.1f;", retinband_noexV[i]);
+		if (!breturnfan)
+		{
+			Outdoorband_noex += temp;
+			supoutband_noex += temp1;
+			supinband_noex += temp2;
+		}
+		else
+		{
+			outdoorband += temp;
+			supoutband += temp1;
+			supinband += temp2;
+			retinband += temp3;
+			retoutband += temp4;
+		}
 	}
 
 	StringBuffer s;
@@ -1249,7 +1310,7 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	writer.StartObject();
 	writer.Key("result");
 	writer.StartObject();
-	
+
 	writer.Key("outdoorband"); writer.String(outdoorband);
 	writer.Key("supinband"); writer.String(supinband);
 	writer.Key("supoutband"); writer.String(supoutband);
@@ -1261,10 +1322,10 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	writer.Key("retinband_noex"); writer.String(retinband_noex);
 	writer.Key("retoutband_noex"); writer.String(retoutband_noex);
 	writer.Key("presnoiselevel"); writer.Double(presnoiselevel); // è la pressione sonora totale all'esterno con compressore senza jacket
-	
+
 	writer.Key("errorid"); writer.Int(errorcode);
 	writer.Key("version");  writer.String(VERSION);
-	
+
 	writer.EndObject();
 	writer.EndObject();
 
@@ -1279,16 +1340,19 @@ String^ Rooftop::GetCondeserNoise()
 	String^ err;
 	return  err;
 }
-short Rooftop::GetAttenuazioni(CString code, double att[])
+short Rooftop::GetAttenuazioni(CString code, double attenuazioni[8][8])
 {
 	std::string filter = "";
 	g_NoiseAtt.AddFilterField("OptionCode", "=", code, filter);
 	//ricerco il modello e mandato o ripresa
 	CGenRecordList options = g_NoiseAtt.GetRecordList(filter);
-	CGenTableRecord noise = g_NoiseAtt.Lookup(filter);
+	//CGenTableRecord noise = g_NoiseAtt.Lookup(filter);
 	short tipo = -1;
-	if (noise.IsValid())
+	//if (noise.IsValid())
+	for (const auto currDLL : options)
 	{
+		CGenTableRecord noise = currDLL.c_str();
+		double att[8] = { 0,0,0,0,0,0,0,0 };
 		noise.GetColumn("INOUT", tipo);
 		noise.GetColumn("63HZ", att[0]);
 		noise.GetColumn("125HZ", att[1]);
@@ -1298,6 +1362,12 @@ short Rooftop::GetAttenuazioni(CString code, double att[])
 		noise.GetColumn("2000HZ", att[5]);
 		noise.GetColumn("4000HZ", att[6]);
 		noise.GetColumn("8000HZ", att[7]);
+
+		if (tipo >= 1 && tipo < 9)
+		{
+			for (int j = 0; j < 8; j++)
+				attenuazioni[tipo - 1][j] += att[j];
+		}
 	}
 	//tipo:
 	//banda di ottava per:
@@ -1309,7 +1379,13 @@ short Rooftop::GetAttenuazioni(CString code, double att[])
 	//6 before condeser fan
 	//7 after condenser fan
 	//8 casing
-	
+	if (code == "BAUN")
+	{
+		GetAttenuazioni("INDC", attenuazioni);
+		GetAttenuazioni("OUTC", attenuazioni);
+		GetAttenuazioni("MIXB", attenuazioni);
+		GetAttenuazioni("WLRH", attenuazioni);
+	}
 	return  tipo;
 }
 
@@ -1349,7 +1425,7 @@ String^ Rooftop::GetOptionsPressureDrop(String^ jSONIN)
 
 	CString code = L"";
 	long ripresa = 0,tipo = 0;
-	double pdc = 0;
+	double pdc = 0, baun = 0;
 	double a = 0, b=0, c=0, d=0, e=0;
 
 	//inizio scrittura json output
@@ -1411,6 +1487,11 @@ String^ Rooftop::GetOptionsPressureDrop(String^ jSONIN)
 				errorcode = 2; 
 			if (pdc > 300)
 				errorcode = 3; 
+
+			if (tipo == 5) //componenti interni che finiranno tutti sotto BAUN
+			{
+				baun += pdc;
+			}
 			CGas gas;
 			if (tipo == 2) //batteria calda preheating
 			{
@@ -1467,12 +1548,19 @@ String^ Rooftop::GetOptionsPressureDrop(String^ jSONIN)
 					errorcode = 6;
 				pdc = Round(pdc / tmpDens, 1);
 			}
-			
-			writer.StartObject();
-			writer.Key("options"); writer.String(code);
-			writer.Key("pressure");  writer.Double(pdc);
-			writer.EndObject();
+			if (tipo != 5)
+			{
+				writer.StartObject();
+				writer.Key("options"); writer.String(code);
+				writer.Key("pressure");  writer.Double(pdc);
+				writer.EndObject();
+			}
 		}
+		writer.StartObject();
+		writer.Key("options"); writer.String("BAUN");
+		writer.Key("pressure");  writer.Double(baun);
+		writer.EndObject();
+
 		writer.EndArray();
 		
 	}
@@ -1707,22 +1795,22 @@ String^ Rooftop::SearchModel(CString model, CString fanopt, double portata, int 
 		if (fanopt.IsEmpty() || fanopt == _T("EFLC"))
 		{
 			modello.GetColumn("Return_fan_EFLC", test);
-			modello.GetColumn("Return_Qty_fan", nfan);
+			modello.GetColumn("Return_Qty_fan_LP", nfan);
 		}
 		if (fanopt == _T("EFHC"))
 		{
 			modello.GetColumn("Return_fan_EFHC", test);
-			modello.GetColumn("Return_Qty_fan", nfan);
+			modello.GetColumn("Return_Qty_fan_HP", nfan);
 		}
 		if (fanopt == _T("EFLA"))
 		{
 			modello.GetColumn("Return_fan_EFLA", test);
-			modello.GetColumn("Return_Qty_fan", nfan);
+			modello.GetColumn("Return_Qty_fan_LP", nfan);
 		}
 		if (fanopt == _T("EFHA"))
 		{
 			modello.GetColumn("Return_fan_EFHA", test);
-			modello.GetColumn("Return_Qty_fan", nfan);
+			modello.GetColumn("Return_Qty_fan_HP", nfan);
 		}
 	}
 	double portmin = 0, portmax = 0;
@@ -1767,6 +1855,10 @@ String^ Rooftop::SearchModel(CString model, CString fanopt, double portata, int 
 	if (fantype == 11)
 		modello.GetColumn("Coil_post_string", coil);
 
+	double W = 0, H = 0;
+	modello.GetColumn("Indoor_duct_width", W);
+	modello.GetColumn("Indoor_duct_height", H);
+
 	//cerco corrispondenza tra nome modello e codice articolo preso da dll:
 	std::string str = (g_elencoEBMJson);
 	//::MessageBox(NULL, g_elencoEBMJson, _T("modello fan"), MB_OK);
@@ -1787,6 +1879,8 @@ String^ Rooftop::SearchModel(CString model, CString fanopt, double portata, int 
 	writer.Key("FANCODE"); writer.String(codart);
 	writer.Key("FANNUMBER"); writer.Int(nfan);
 	writer.Key("COIL");  writer.String(coil);
+	writer.Key("W");  writer.Double(W);
+	writer.Key("H");  writer.Double(H);
 	
 	writer.EndObject();
 	
@@ -1921,8 +2015,8 @@ bool Rooftop::LoadEBMDll()
 		//TRACE(_T("%s;%s"), fan,cip);TRACE(_T("\n"));
 		CString fan1 = ExtractString(fanEBM, &pos1, _T(";"));
 
-	//	::MessageBox(NULL, fan1, _T("modello fan"), MB_OK);
-	//	::MessageBox(NULL, fan, _T("modello fan"), MB_OK);
+		//::MessageBox(NULL, fan1, _T("modello fan"), MB_OK);
+		//::MessageBox(NULL, fan, _T("modello fan"), MB_OK);
 		// la riga dopo crea i codici articolo
 		//TRACE(_T("%s;%s-%s-%s ;%s\n"), fan, fan1.Left(6), fan1.Mid(6, 4), fan1.Mid(10, 2), fan1);
 		
