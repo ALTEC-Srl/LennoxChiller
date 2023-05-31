@@ -72,7 +72,7 @@ namespace LennoxRooftop {
 		String^ GetDrawing(String^ jSONIN);
 		String^ GetBIMModel(String^ jSONIN);
 		
-		bool Init();
+		int Init(short deb);
 	private:
 		bool LoadEBMDll();
 		short GetSFPClass(double sfp);
@@ -87,6 +87,8 @@ namespace LennoxRooftop {
 		String^ GetCondeserNoise();
 		short GetAttenuazioni(CString code, double attenuazioni[8][8]);
 		double FormatString(CString temp);
+
+		void LogFile(const CString& log);
 		
 	};
 	///////////////////////////////////////////////////////////////////////////

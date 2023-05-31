@@ -27,6 +27,7 @@ PEBMPAPSTFAN_FNCT30 SET_DECIMALSEPARATOR = NULL;
 using namespace LennoxRooftop;
 
 CString g_elencoEBMJson;
+short iDebug = 0;
 
 double Round(double val, int dec = 0)
 {
@@ -1109,7 +1110,7 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 				if (value == 1)
 				{
 					short tipo = GetAttenuazioni(optcode, attenuazioni);
-				}
+				} 
 			}
 
 		}	
@@ -1286,8 +1287,8 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 		temp.Format("%.1f;", Outdoorband_noexV[i]);
 		temp1.Format("%.1f;", supoutband_noexV[i]);
 		temp2.Format("%.1f;", supinband_noexV[i]);
-		temp3.Format("%.1f;", retoutband_noexV[i]);
-		temp4.Format("%.1f;", retinband_noexV[i]);
+		temp3.Format("%.1f;", retoutbandV[i]);
+		temp4.Format("%.1f;", retinbandV[i]);
 		if (!breturnfan)
 		{
 			Outdoorband_noex += temp;
@@ -1584,25 +1585,44 @@ String^ Rooftop::GetBIMModel(String^ jSONIN)
 	return  err;
 }
 
-bool Rooftop::Init()
+int Rooftop::Init(short debug)
 {
-	bool l;
+	if (debug > 0)
+		iDebug = 1;
+	else 
+		iDebug = 0;
+
+	short err = 0;
 	TCHAR szPathProgramData[1024];
 	GetCurrentDirectory(1024, szPathProgramData);
 	CString path = CString(szPathProgramData);
+	LogFile(path);
 	//::MessageBox(NULL, path, _T(""), MB_OK);
 	//String^ str = marshal_as <std::string> path;
 	//String^ boh = str;
-	l = OpenConnection();
-	l &= LoadModel();
-	l &= LoadCoeffPdc();
-	l &= LoadNoiseAttenuation();
-	l &= LoadEBMDll();
+	//::MessageBox(NULL, path, _T("connection"), MB_OK);
+	if (debug != 2)
+	{
+		if (!OpenConnection())
+			err = 1;
+		//::MessageBox(NULL, path, _T("connectionsql is ok"), MB_OK);
+		if (!LoadModel())
+			err = 2;
+		if (!LoadCoeffPdc())
+			err = 3;
+		if (!LoadNoiseAttenuation())
+			err = 4;
+	}
+	//::MessageBox(NULL, path, _T("load data is ok"), MB_OK);
+	if (!LoadEBMDll())
+		err = 90;
+	
+	//::MessageBox(NULL, path, _T("load EBM IS ok"), MB_OK);
 
 	SetCurrentDirectory(path); //setting path
 
 	//::MessageBox(NULL, path, _T(""), MB_OK);
-	return l;
+	return err;
 }
 bool Rooftop::OpenConnection()
 {
@@ -1707,7 +1727,7 @@ bool Rooftop::LoadModel()
 
 bool Rooftop::OpenDataSource(CString fileName, CDataSource& ds, CString provider, CString pwd)
 {
-
+	LogFile(fileName);
 	// Default provider = JET
 	if (provider.IsEmpty())
 		provider = _T("Microsoft.JET.OLEDB.4.0");
@@ -1728,22 +1748,26 @@ bool Rooftop::OpenDataSource(CString fileName, CDataSource& ds, CString provider
 			con += _T("; Jet OLEDB:Database Password=") + pwd;
 		}
 	}
+	
+	LogFile(con);
+
 	_bstr_t bstrConnect;
 	_bstr_t bstrFile;
 	bstrConnect = con;
 	bstrFile = fileName;
 
 	HRESULT hr;
-
+	LogFile("connecting to sql");
 	if (fileName.Find(_T(".udl")) != -1)
 		hr = ds.OpenFromFileName(bstrFile);
 	else
 		hr = ds.OpenFromInitializationString(bstrConnect);
-	
+	LogFile("connection is ok");
 	if (FAILED(hr))
 	{
 		//DisplayOLEDBErrorRecords(hr);
 		//PopupErrorMessage(hr);
+		LogFile("connection is KO");
 		return false;
 	}
 
@@ -1922,7 +1946,7 @@ bool Rooftop::LoadEBMDll()
 	CString temp = ("\\data\\plug_fans");
 	//char path33[MAX_PATH + 1];
 
-
+	
 	//typedef int (__stdcall *PEBMPAPSTFAN_FNCT1)( char** buffer );
 	typedef int(__stdcall* PEBMPAPSTFAN_FNCT1)(char** buffer);
 	typedef int(__stdcall* PEBMPAPSTFAN_FNCT11)(char* buffer);
@@ -1935,7 +1959,9 @@ bool Rooftop::LoadEBMDll()
 		g_EbmPapstFanDLL = LoadLibrary("data\\EbmPapstFan.dll");
 		if (!g_EbmPapstFanDLL)
 		{
+			LogFile("failed to load EBM dll");
 			return false;
+			
 		}
 	}
 
@@ -1960,6 +1986,7 @@ bool Rooftop::LoadEBMDll()
 	CString path = CString(szPathProgramData);
 	
 	temp.Format(_T("%s\\data\\plug_fans\\"), path);
+	LogFile(temp);
 	//::MessageBox(NULL, temp, _T(""), MB_OK);
 	A2W(temp);
 	short err = SET_XML_PATH_WS(A2W(temp));
@@ -1969,6 +1996,7 @@ bool Rooftop::LoadEBMDll()
 
 	if (err < 0)
 	{
+		LogFile("failed to load database");
 		return false;
 	}
 
@@ -2027,7 +2055,7 @@ bool Rooftop::LoadEBMDll()
 
 	writer.EndObject();
 	g_elencoEBMJson = gcnew String(s.GetString());
-
+	LogFile(g_elencoEBMJson);
 	SAFE_ARRAY_DELETE(cMBOut);
 
 	SEARCH_PRODUCTS = (PEBMPAPSTFAN_FNCT6)GetProcAddress(g_EbmPapstFanDLL, "SEARCH_PRODUCTS");
@@ -2088,3 +2116,24 @@ bool Rooftop::LoadEBMDll()
 }
 
 
+void Rooftop::LogFile(const CString& log)
+{
+	
+	if (!iDebug)
+		return;
+
+	
+	CStdioFile fileLog;
+
+	fileLog.Open(_T("c:\\temp\\logRooftop.log"), CFile::modeCreate | CFile::modeNoTruncate | CFile::modeWrite);
+	fileLog.SeekToEnd();
+	if (!log.IsEmpty())
+	{
+		CString toLog;
+		toLog.Format(_T("%d\t%s"), GetTickCount(), log);
+		fileLog.WriteString(toLog + _T("\n"));
+	}
+	fileLog.Close();
+	
+	
+}
