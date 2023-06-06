@@ -7,7 +7,7 @@ Public Class Form1
     Private Sub Button2_Click(sender As Object, e As EventArgs) Handles Button2.Click
         Dim res As Long
 
-        res = rt.Init(1)
+        res = rt.Init(0)
         If res > 0 Then
             init = False
             MsgBox("init failed")

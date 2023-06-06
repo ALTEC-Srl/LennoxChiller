@@ -17,7 +17,7 @@
 #include <atldbcli.h>
 #include <afxtempl.h>		// MFC Template classes
 
-#define VERSION "1.0.0.0"
+#define VERSION "1.0.0.1"
 
 #define PIGRECO			3.1415928
 constexpr long lenRis = 1000000;

@@ -220,7 +220,11 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 
 	//recupero le informazioni nel database interno LENNOX in base all'idmodello richiesto
 	//ritorna un json creato con i dati di ritorno del recordset
-	
+	if (g_ModelTable.IsEmpty())
+	{
+		errorcode = 4;
+		goto exit;
+	}
 	String^ JSONmodelspecification = SearchModel(model, fanopt, port*3600.0, fantype);
 	if (CString(JSONmodelspecification).IsEmpty())
 	{
