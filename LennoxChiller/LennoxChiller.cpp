@@ -404,8 +404,7 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 			{
 				double port1 = port / nfan;
 				double pressh = maxpd;
-				if (fantype == 1 || fantype == 2)
-					pressh -= pdcInternal;
+				
 
 				double pressl = 0;
 				double presss = (pressl + pressh) / 2.0;
@@ -414,7 +413,7 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 				long cont = 0;
 				do
 				{
-					sprintf_s(cMBBuffer, 4000, "%s;0;0;%.4f;;%.2f;%.4f;%.4f;%.2f;%.2f;ebmpapst;0;F;4000", fanmodel.GetString(), dens, temperature, presss, port, maxWidth, maxHeigth);
+					sprintf_s(cMBBuffer, 4000, "%s;0;0;%.4f;;%.2f;%.4f;%.4f;%.2f;%.2f;ebmpapst;0;F;4000", fanmodel.GetString(), dens, temperature, presss, port1, maxWidth, maxHeigth);
 					char cMBOut[4001]; ZeroMemory(cMBOut, 4001 * sizeof(char)); char* pRisr = &cMBOut[0];
 
 					errore = GET_CALCULATION_FAN_ALONE_PC(&cMBBuffer[0], &pRisr);
@@ -432,6 +431,8 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 					cont++;
 				} while (pressh - pressl > 1 && cont < 1000);
 				maxpd = Round(presss, 0);
+				if (fantype == 1 || fantype == 2)
+					maxpd -= pdcInternal;
 			}
 		}
 		if (pTot > 0 && port > 0)
