@@ -87,7 +87,7 @@ namespace LennoxRooftop {
 		String^ GetCondeserNoise();
 		short GetAttenuazioni(CString code, double attenuazioni[8][8]);
 		double FormatString(CString temp);
-
+		CString findnextstringcoil(CString sigla, short i);
 		void LogFile(const CString& log);
 		
 	};

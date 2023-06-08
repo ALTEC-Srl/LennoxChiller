@@ -249,7 +249,14 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 		errorcode = 1;
 		goto exit;
 	}
-	
+
+	if (maxWidth * maxHeigth <= 100000) //100*1000
+	{
+		errorcode = 7;
+		goto exit;
+	}
+		
+	//GF 08-06-23: SAREBBE MEGLIO CHIAMARE LA GETOPTIONSPRESSUREDROP e leggere il valore del codice BAUN
 	double pdcInternal = 0;
 	g_CoeffPdc.AddFilterField("Nomcomm", "=", model, filter);
 	g_CoeffPdc.AddFilterField("Flow_stream", "=", 1, filter);
@@ -337,7 +344,7 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 		int err = 999;
 
 		CString ventRis, ventRis1;
-		sprintf_s(cMBBuffer, 4000, "%s", fanmodel.GetString());
+		sprintf_s(cMBBuffer, 4000, "%s,F,4000,%s", fanmodel.GetString(), fanname.GetString());
 
 		err = GET_TECHNICAL_DATA_PC(cMBBuffer, &pRis);	// MV 10.06.2014. Per utilizzare la nuova DLL 3.0.1.0
 		errorcode = err * 100;
@@ -377,7 +384,7 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 			double input[13];
 			int s1 = 0, s2 = 0;
 			err = 0;
-
+			sprintf_s(cMBBuffer, 4000, "%s", fanmodel.GetString());
 			err = GET_STANDARDS_FANMOTOR(cMBBuffer, SIZE, TYP, ISOCLASS, PROTECTION, z1, z2, &output[0]);	// MV 10.06.2014. Per utilizzare la nuova DLL 3.0.1.0
 			errorcode = err * 1000;
 			int pos = 0;
@@ -413,11 +420,13 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 				long cont = 0;
 				do
 				{
-					sprintf_s(cMBBuffer, 4000, "%s;0;0;%.4f;;%.2f;%.4f;%.4f;%.2f;%.2f;ebmpapst;0;F;4000", fanmodel.GetString(), dens, temperature, presss, port1, maxWidth, maxHeigth);
+					sprintf_s(cMBBuffer, 4000, "%s;0;0;%.4f;;%.2f;%.4f;%.4f;%.2f;%.2f;ebmpapst;0;F;4000;;%s", fanmodel.GetString(), dens, temperature, presss, port1, maxWidth, maxHeigth, fanname.GetString());
 					char cMBOut[4001]; ZeroMemory(cMBOut, 4001 * sizeof(char)); char* pRisr = &cMBOut[0];
 
 					errore = GET_CALCULATION_FAN_ALONE_PC(&cMBBuffer[0], &pRisr);
 					ventRis = cMBOut;
+					if (errore == -5)
+						break;
 					if (errore == 0)
 					{
 						pressl = presss;
@@ -433,6 +442,14 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 				maxpd = Round(presss, 0);
 				if (fantype == 1 || fantype == 2)
 					maxpd -= pdcInternal;
+				
+				if (cont >= 1000)
+					errorcode = 5;
+				if (maxpd <= 0)
+					errorcode = 6;
+				if (errore == -5)
+					errorcode = -5;
+
 			}
 		}
 		if (pTot > 0 && port > 0)
@@ -553,7 +570,7 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 			{
 				double port1 = port / nfan;
 
-				sprintf_s(cMBBuffer, 4000, "%s;0;0;%.4f;;%.2f;%.4f;%.4f;%.2f;%.2f;ebmpapst;0;F;4000", fanmodel.GetString(), dens, temperature, press, port1, maxWidth, maxHeigth);
+				sprintf_s(cMBBuffer, 4000, "%s;0;0;%.4f;;%.2f;%.4f;%.4f;%.2f;%.2f;ebmpapst;0;F;4000;;%s", fanmodel.GetString(), dens, temperature, press, port1, maxWidth, maxHeigth, fanname.GetString());
 
 
 				errorcode = err = GET_CALCULATION_FAN_ALONE_PC(&cMBBuffer[0], &pRis);	// MV 10.06.2014. Per versione nuova DLL 3.0.1.0
@@ -676,6 +693,21 @@ String^ Rooftop::GetModelPerformance(String^ jSONIN)
 	String^ err;
 	return  err;
 } 
+
+CString Rooftop::findnextstringcoil(CString sigla, short n)
+{
+	short pos = 0, pos1 = 0;
+	pos1 = sigla.Find(_T(" "));
+	for (int i = 0; i < n; i++)
+	{
+		pos = pos1;
+		pos1 = sigla.Find(_T(" "), pos + 1);
+	}
+	CString ret = sigla.Mid(pos + 1, pos1 - pos);
+
+	return ret;
+}
+
 
 String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 {
@@ -841,7 +873,7 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		writer.Key("PARAM4"); writer.String("True"); // verify coil
 
 		// coil
-		short ntubi = atoi(sigla.Left(2));
+		/*short ntubi = atoi(sigla.Left(2));
 		short pos = 0;
 
 		pos = sigla.Find("-",pos);
@@ -849,8 +881,19 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		pos = sigla.Find("-", pos+1);
 		double lencoil = atof(sigla.Mid(pos + 1, 4));
 		double pal = atof(sigla.Mid(pos + 6, 4));
-		int ncircuiti = atof(sigla.Mid(pos + 11, 2)); // quà ci sarebbe da capire se la sigla 2*ncircuiti o altro...
-
+		int ncircuiti = atof(sigla.Mid(pos + 11, 2)); // quà ci sarebbe da capire se la sigla 2*ncircuiti o altro...*/
+		CString geo = "", surface = "";
+		short ranghi = 0, ntubi = 0, ncircuiti = 0, injections = 0;
+		double lencoil = 0, pal = 0;
+		
+		geo = findnextstringcoil(sigla,1).Trim();
+		surface = findnextstringcoil(sigla, 2).Trim();
+		ranghi = atoi(findnextstringcoil(sigla, 3));
+		ntubi = atoi(findnextstringcoil(sigla, 4));
+		lencoil = atof(findnextstringcoil(sigla, 5));
+		pal = atof(findnextstringcoil(sigla, 6)) / 100.0;
+		injections = atoi(findnextstringcoil(sigla, 7));
+		ncircuiti = atoi(findnextstringcoil(sigla, 8));
 
 		writer.Key("PARAM9"); writer.Int(-999999); // max fin height
 		writer.Key("PARAM26"); writer.Int(ntubi); // number tubes
@@ -861,9 +904,9 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		writer.Key("PARAM29"); writer.Double(pal); // spacing
 		writer.Key("PARAM22"); writer.Int(ncircuiti); // number of circuits
 		writer.Key("PARAM41"); writer.Int(1); // Type of fluid arrangement (1 = counterflow ; 2 = Parallel flow)
-		writer.Key("PARAM27"); writer.Int(31); // number of injections (total Number of Tubes feeded from headers)
-		writer.Key("PARAM33"); writer.String("G"); // surface
-		writer.Key("PARAM20"); writer.String("4S6"); // pattern
+		writer.Key("PARAM27"); writer.Int(injections); // number of injections (total Number of Tubes feeded from headers)
+		writer.Key("PARAM33"); writer.String(surface); // surface
+		writer.Key("PARAM20"); writer.String(geo); // pattern
 		writer.Key("OP_01"); writer.Int(1); // tube material
 		writer.Key("OP_09"); writer.Int(2); // tube thickness
 		writer.Key("OP_03"); writer.Int(1); // fin thickness
@@ -983,13 +1026,29 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 				//sono alettati...non ci sono i fuori tutto
 				overalllength = FormatString(res["OUT_31"].GetString());
 				overallheight = FormatString(res["OUT_27"].GetString());
+				CString d = res["OUT_00"].GetString();
+				errorcode = atoi(d.Mid(3, d.GetLength())) + 3000;
+				if (errorcode == 3000)
+					errorcode = 0;
 			}
 		}
 		else
 		{
-			errorcode = atoi(d);
-			if (errorcode == 0)
+			if (d == "000")
 				errorcode = -999;
+			else
+			{
+				if (d.Left(2) == "ER")
+					errorcode = atoi(d.Mid(3, d.GetLength())) + 1000;
+				if (d.Left(2) == "DB")
+					errorcode = atoi(d.Mid(3, d.GetLength())) + 2000;
+
+				if (errorcode == 0)
+				{
+					errorcode = atoi(d) + 4000;
+				}
+			}
+			
 		}
 		
 		//d = nresults;
