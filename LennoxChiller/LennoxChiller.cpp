@@ -207,14 +207,14 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 	double temperature = doc["temperature"].GetDouble();
 	int iqngn = doc["iqngn"].GetInt();
 
-	int errorcode = 0;
+	int errorcode = 0, errorcode1 = 0;
 	StringBuffer s;
 	CString fanmodel = "";
 	CString fanname = "";
 	std::string str1 = "";
 	std::string filter1 = "";
 	std::string filter = "";
-	CString casingcode[5] = {"BAUN","INDC","OUTC","MIXB", "WLRH"};
+	//CString casingcode[5] = {"BAUN","INDC","OUTC","MIXB", "WLRH"};
 	CGenTableRecord option;
 	double a = 0, b = 0, c = 0, d = 0, e = 0;
 
@@ -258,7 +258,72 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 		
 	//GF 08-06-23: SAREBBE MEGLIO CHIAMARE LA GETOPTIONSPRESSUREDROP e leggere il valore del codice BAUN
 	double pdcInternal = 0;
-	g_CoeffPdc.AddFilterField("Nomcomm", "=", model, filter);
+	if (fantype == 1 || fantype == 2) // solo su ventilatore di supply e ripresa, ma verifico dopo il flusso
+	{
+		
+
+		String^ INBAUN;
+
+		//"{""modelid"": ""B6010AH025SPF"", ""airflowsupply"": 4200, ""airflowexhaust"": 3800, ""coiltempdb"": 32, ""coiltempwb"": 50, ""coiltempposthdb"": 22, ""coiltempposthwb"": 18, ""coiltemppostcdb"": 32, ""coiltemppostcwb"":25,  ""iqngn"": 0}"
+		StringBuffer s;
+		Writer<StringBuffer> writer(s);
+
+		writer.StartObject();
+		writer.Key("modelid"); writer.String(model);
+		writer.Key("airflowsupply"); writer.Double(port*3600.0);
+		writer.Key("airflowexhaust"); writer.Double(port * 3600.0);
+		writer.Key("coiltempdb");  writer.Double(0);
+		writer.Key("coiltempwb");  writer.Double(0);
+		writer.Key("coiltempposthdb");  writer.Double(0);
+		writer.Key("coiltempposthwb");  writer.Double(0);
+		writer.Key("coiltemppostcdb");  writer.Double(0);
+		writer.Key("coiltemppostcwb");  writer.Double(0);
+		writer.Key("iqngn");  writer.Int(0);
+			
+		writer.EndObject();
+
+		INBAUN = gcnew String(s.GetString());
+
+		String^ pdcBAUN = GetOptionsPressureDrop(INBAUN);
+
+		if (!CString(pdcBAUN).IsEmpty())
+		{
+			str1 = marshal_as<std::string>(pdcBAUN);
+			doc.Parse(str1.c_str());
+			Value& responseObj = doc["result"];
+			if (responseObj.IsObject())
+			{
+				Value responseObj1;
+				if (fantype == 1)
+					responseObj1 = responseObj["supply"];
+				else 
+					responseObj1 = responseObj["return"];
+
+				if (responseObj1.IsArray())
+				{
+					for (int i = 0; i < responseObj1.GetArray().Size(); i++)
+					{
+						Value& opt = responseObj1[i];
+
+						if (opt.IsObject())
+						{
+							CString optcode = opt["options"].GetString();
+							double value = opt["pressure"].GetDouble();
+							if (optcode == "BAUN")
+							{
+								pdcInternal = value;
+							}
+						}
+
+					}
+				}
+			}
+		}
+		if (pdcInternal <= 0)
+			errorcode1 = 3;
+	}
+
+	/*g_CoeffPdc.AddFilterField("Nomcomm", "=", model, filter);
 	g_CoeffPdc.AddFilterField("Flow_stream", "=", 1, filter);
 	filter1 = filter;
 	for (int i = 0; i < 5; i++)
@@ -284,7 +349,7 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 			errorcode = 3;
 		pdcInternal += pdcCasing;
 		filter = filter1;
-	}
+	}*/
 	
 
 	double nfunzi = 0;
@@ -347,7 +412,7 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 		sprintf_s(cMBBuffer, 4000, "%s,F,4000,%s", fanmodel.GetString(), fanname.GetString());
 
 		err = GET_TECHNICAL_DATA_PC(cMBBuffer, &pRis);	// MV 10.06.2014. Per utilizzare la nuova DLL 3.0.1.0
-		errorcode = err * 100;
+		errorcode += err * 100;
 		CString ventRis2 = pRis;
 		CString temp1;
 
@@ -632,6 +697,8 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 	{
 		errorcode = 11;
 	}
+	if (errorcode == 0)
+		errorcode = errorcode1;
 exit:
 	//json output:
 	Writer<StringBuffer> writer(s);
@@ -1621,12 +1688,16 @@ String^ Rooftop::GetOptionsPressureDrop(String^ jSONIN)
 				writer.EndObject();
 			}
 		}
-		writer.StartObject();
-		writer.Key("options"); writer.String("BAUN");
-		writer.Key("pressure");  writer.Double(baun);
-		writer.EndObject();
+		if (baun > 0)
+		{
+			writer.StartObject();
+			writer.Key("options"); writer.String("BAUN");
+			writer.Key("pressure");  writer.Double(baun);
+			writer.EndObject();
+		}
 
 		writer.EndArray();
+		baun = 0;
 		
 	}
 	writer.Key("errorid"); writer.Int(errorcode);
