@@ -1257,22 +1257,36 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	CString noiseretout = doc["noiseretout"].GetString();
 	CString noiseoutin = doc["noiseoutin"].GetString();
 	CString noiseoutout = doc["noiseoutout"].GetString();
+	//OUTPUT
+	CString outdoorband = "", supinband = "", supoutband = "", retinband = "", retoutband = "", Outdoorband_noex = "", supinband_noex = "", supoutband_noex = "", retinband_noex = "", retoutband_noex = "";
+	std::string strComp;
+	Document docComp;
 
 	int iqngn = doc["iqngn"].GetInt();
 
-	int pos1 = 0;
-	int pos2 = 0;
-	int pos3 = 0;
-	int pos4 = 0;
-	int pos5 = 0;
-	double noisesupplyinV[9];
-	double noisesupplyoutV[9];
-	double noiseoutoutV[9];
-	double noiseretinV[9] = { 0,0,0,0,0,0,0,0.0};;
-	double noisesretoutV[9] = { 0,0,0,0,0,0,0,0.0 };;
+	int pos1 = 0, pos1prec = -1;
+	int pos2 = 0, pos2prec = -1;
+	int pos3 = 0, pos3prec = -1;
+	int pos4 = 0, pos4prec = -1;
+	int pos5 = 0, pos5prec = -1;
+	double noisesupplyinV[9] = { 0,0,0,0,0,0,0,0.0 };
+	double noisesupplyoutV[9] = { 0,0,0,0,0,0,0,0.0 };
+	double noiseoutoutV[9] = { 0,0,0,0,0,0,0,0.0 };
+	double noiseretinV[9] = { 0,0,0,0,0,0,0,0.0};
+	double noisesretoutV[9] = { 0,0,0,0,0,0,0,0.0 };
 	double filtroA[8] = { 26.2,16.1,8.6,3.2,0,-1.2,-1,1.1 };
 	bool breturnfan = false;
 
+	if (distance == 0)
+	{
+		errorcode = 1;
+		goto exit;
+	}
+	if (noisesupplyin.IsEmpty() || noisesupplyout.IsEmpty() || noiseoutin.IsEmpty() || noiseoutout.IsEmpty())
+	{
+		errorcode = 2;
+		goto exit;
+	}
 	if (!noiseretin.IsEmpty())
 	{
 		breturnfan = true;
@@ -1285,16 +1299,49 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	for (int i = 1; i < 9; i++)
 	{
 		noisesupplyinV[i] = _tstof(ExtractString(noisesupplyin, &pos1, _T(";")));
+		if (pos1 == pos1prec)
+			errorcode = 3;
 		noisesupplyoutV[i] = _tstof(ExtractString(noisesupplyout, &pos2, _T(";")));
+		if (pos2 == pos2prec)
+			errorcode = 4;
 		noiseoutoutV[i] = _tstof(ExtractString(noiseoutout, &pos3, _T(";")));
+		if (pos3 == pos3prec)
+			errorcode = 5;
+		pos1prec = pos1;
+		pos2prec = pos2;
+		pos3prec = pos3;
 		if (breturnfan)
 		{
 			noiseretinV[i] = _tstof(ExtractString(noiseoutin, &pos4, _T(";")));
+			if (pos4 == pos4prec)
+				errorcode = 6;
 			noisesretoutV[i] = _tstof(ExtractString(noiseoutout, &pos5, _T(";")));
+			if (pos5 == pos5prec)
+				errorcode = 7;
+			pos4prec = pos4;
+			pos5prec = pos5;
 		}
-		
 	}
-	
+	if (errorcode > 0)
+		goto exit;
+
+	double ok = 1;
+	for (int i = 1; i < 9; i++)
+	{
+		ok *= noisesupplyinV[i];
+		ok *= noisesupplyoutV[i];
+		ok *= noiseoutoutV[i];
+		if (breturnfan)
+		{
+			ok *= noiseretinV[i];
+			ok *= noisesretoutV[i];
+		}
+	}
+	if (ok == 0)
+	{
+		errorcode = 8;
+		goto exit;
+	}
 	//CALCULATION
 	double outdoorbandV[9], supinbandV[9], supoutbandV[9], retinbandV[9], retoutbandV[9], Outdoorband_noexV[9], supinband_noexV[9], supoutband_noexV[9], retinband_noexV[9], retoutband_noexV[9];
 	double sumlog[10];
@@ -1362,8 +1409,7 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	pos1 = 0;
 	pos2 = 0;
 	String^ jSONComp = GetCondeserNoise(); //input //WIth/Without jacket (COJA)??portata? pressione? 
-	std::string strComp = marshal_as<std::string>(jSONIN);
-	Document docComp;
+	strComp = marshal_as<std::string>(jSONIN);
 	docComp.Parse(strComp.c_str());
 	if (docComp.IsObject())
 	{
@@ -1407,10 +1453,9 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	
 	//telefonata con pino 12-05-23 , cambiato in 2 * PIGRECO, è semisferico e non sferico.
 	
-	//OUTPUT
-
 	
-	CString outdoorband = "", supinband = "", supoutband = "", retinband = "", retoutband = "", Outdoorband_noex = "", supinband_noex = "", supoutband_noex = "", retinband_noex = "", retoutband_noex = "";
+	
+	
 	
 	for (int i = 0; i < 9; i++)
 	{
@@ -1436,6 +1481,7 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 		}
 	}
 
+exit:
 	StringBuffer s;
 	Writer<StringBuffer> writer(s);
 
