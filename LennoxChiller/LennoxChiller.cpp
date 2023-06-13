@@ -1277,12 +1277,12 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	double filtroA[8] = { 26.2,16.1,8.6,3.2,0,-1.2,-1,1.1 };
 	bool breturnfan = false;
 
-	if (distance == 0)
+	/*if (distance == 0)
 	{
 		errorcode = 1;
 		goto exit;
-	}
-	if (noisesupplyin.IsEmpty() || noisesupplyout.IsEmpty() || noiseoutin.IsEmpty() || noiseoutout.IsEmpty())
+	}*/
+	if (noisesupplyin.IsEmpty() || noisesupplyout.IsEmpty() || noiseoutout.IsEmpty())
 	{
 		errorcode = 2;
 		goto exit;
@@ -1312,10 +1312,10 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 		pos3prec = pos3;
 		if (breturnfan)
 		{
-			noiseretinV[i] = _tstof(ExtractString(noiseoutin, &pos4, _T(";")));
+			noiseretinV[i] = _tstof(ExtractString(noiseretin, &pos4, _T(";")));
 			if (pos4 == pos4prec)
 				errorcode = 6;
-			noisesretoutV[i] = _tstof(ExtractString(noiseoutout, &pos5, _T(";")));
+			noisesretoutV[i] = _tstof(ExtractString(noiseretout, &pos5, _T(";")));
 			if (pos5 == pos5prec)
 				errorcode = 7;
 			pos4prec = pos4;
@@ -1449,7 +1449,9 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	Outdoorband_noexV[0] = 10 * log10(sumlog[6]); //Total Sound Power Levels OUT OF UNIT (dBA)= SUPPLY FAN + CONDENSER FAN + COMPRESSOR
 	//Outdoorband_noexV[0] = 10 * log10(sumlog[7]); //Total Sound Power Levels OUT OF UNIT (dBA) [COJA] = SUPPLY FAN + CONDENSER FAN + COMPRESSOR WITH JACKET
 	
-	double presnoiselevel = Round(Outdoorband_noexV[0] + 10.0 * log10(1 / (2 * PIGRECO * pow(distance,2))), 1); //è la pressione sonora totale all'esterno con compressore 
+	double presnoiselevel = 0;
+	if (distance > 0)
+		presnoiselevel = Round(Outdoorband_noexV[0] + 10.0 * log10(1 / (2 * PIGRECO * pow(distance,2))), 1); //è la pressione sonora totale all'esterno con compressore 
 	
 	//telefonata con pino 12-05-23 , cambiato in 2 * PIGRECO, è semisferico e non sferico.
 	
@@ -1470,6 +1472,7 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 			Outdoorband_noex += temp;
 			supoutband_noex += temp1;
 			supinband_noex += temp2;
+			retinband_noex += temp2;
 		}
 		else
 		{
