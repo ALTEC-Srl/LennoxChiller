@@ -2028,7 +2028,7 @@ String^ Rooftop::SearchModel(CString model, CString fanopt, double portata, int 
 	//ATTENZIONE QUESTI SONO QUELLI ESTERNI ASSIALI, sono EBM?
 	if (fantype == 3)
 	{
-		if (fanopt == _T("EAFA"))
+		if (fanopt.IsEmpty() || fanopt == _T("EAFA"))
 		{
 			modello.GetColumn("C1_Outdoor_fan_STD", test);
 			modello.GetColumn("C1_Outdoor_fan_qty", nfan);
