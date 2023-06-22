@@ -1407,7 +1407,8 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	//double noiseCompCOJAV[9];
 
 	pos1 = 0;
-	pos2 = 0;
+	pos2 = -1;
+	bool nocompr = false;
 	String^ jSONComp = GetCondeserNoise(); //input //WIth/Without jacket (COJA)??portata? pressione? 
 	strComp = marshal_as<std::string>(jSONIN);
 	docComp.Parse(strComp.c_str());
@@ -1417,23 +1418,33 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 		CString noiseComp = docComp["noise"].GetString();
 		//CString noiseCompCOJA = docComp["noisecoja"].GetString();
 
-
+		
 		for (int i = 0; i < 9; i++)
 		{
+			if (pos1 == pos2)
+			{
+				nocompr = true;
+				break;
+			}
+			pos2 = pos1;
 			noiseCompV[i] = _tstof(ExtractString(noiseComp, &pos1, _T(";")));
+			
 			//noiseCompCOJAV[i] = _tstof(ExtractString(noiseCompCOJA, &pos2, _T(";")));
 		}
 		//////
-		for (int i = 1; i < 9; i++)
+		if (!nocompr)
 		{
-			noiseCompV[i] = noiseCompV[i] - filtroA[i - 1] - attenuazioni[6][i - 1];
-			//noiseCompCOJAV[i] = noiseCompCOJAV[i] - filtroA[i - 1] - coilatt[i - 1] - jacket[i - 1];
-			sumlog[4] += pow(10, noiseCompV[i] / 10.0);
-			//sumlog[5] += pow(10, noiseCompCOJAV[i] / 10.0);
+			for (int i = 1; i < 9; i++)
+			{
+				noiseCompV[i] = noiseCompV[i] - filtroA[i - 1] - attenuazioni[6][i - 1];
+				//noiseCompCOJAV[i] = noiseCompCOJAV[i] - filtroA[i - 1] - coilatt[i - 1] - jacket[i - 1];
+				sumlog[4] += pow(10, noiseCompV[i] / 10.0);
+				//sumlog[5] += pow(10, noiseCompCOJAV[i] / 10.0);
 
+			}
+			noiseCompV[0] = 10 * log10(sumlog[4]); //Sound Power Levels SUPPLY(dBA) = SUPPLY FAN (out) * SUPPLY FAN NUMBER - EAR ATTENUATION
+			//noiseCompCOJAV[0] = 10 * log10(sumlog[5]); //Sound Power Levels RETURN(dBA) = SUPPLY FAN (in) * SUPPLY FAN NUMBER - INDOOR COIL ATTENUATION - EAR ATTENUATION
 		}
-		noiseCompV[0] = 10 * log10(sumlog[4]); //Sound Power Levels SUPPLY(dBA) = SUPPLY FAN (out) * SUPPLY FAN NUMBER - EAR ATTENUATION
-		//noiseCompCOJAV[0] = 10 * log10(sumlog[5]); //Sound Power Levels RETURN(dBA) = SUPPLY FAN (in) * SUPPLY FAN NUMBER - INDOOR COIL ATTENUATION - EAR ATTENUATION
 	}
 
 	///////
@@ -1441,7 +1452,13 @@ String^ Rooftop::GetNoiseData(String^ jSONIN)
 	
 	for (int i = 1; i < 9; i++)
 	{
-		Outdoorband_noexV[i] = 10 * log10(pow(10, noiseCompV[i] / 10.0) + pow(10, NoiseSupplyTot[i] / 10.0) + pow(10, NoiseOutdoorTot[i] / 10.0) + pow(10, NoiseRetTot[i] / 10.0));
+		if (!nocompr && breturnfan)
+			Outdoorband_noexV[i] = 10 * log10(pow(10, noiseCompV[i] / 10.0) + pow(10, NoiseSupplyTot[i] / 10.0) + pow(10, NoiseOutdoorTot[i] / 10.0) + pow(10, NoiseRetTot[i] / 10.0));
+		if (nocompr && breturnfan)
+			Outdoorband_noexV[i] = 10 * log10(pow(10, NoiseSupplyTot[i] / 10.0) + pow(10, NoiseOutdoorTot[i] / 10.0) + pow(10, NoiseRetTot[i] / 10.0));
+		if (nocompr && !breturnfan)
+			Outdoorband_noexV[i] = 10 * log10(pow(10, NoiseSupplyTot[i] / 10.0) + pow(10, NoiseOutdoorTot[i] / 10.0));
+
 		//Outdoorband_noexV[i] = 10 * log10(pow(10, noiseCompV[i] / 10.0) + pow(10, NoiseSupplyTot[i] / 10.0) + pow(10, NoiseOutdoorTot[i] / 10.0));
 		sumlog[6] += pow(10, Outdoorband_noexV[i] / 10.0);
 		//sumlog[7] += pow(10, Outdoorband[i] / 10.0);
