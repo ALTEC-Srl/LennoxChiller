@@ -272,8 +272,8 @@ String^ Rooftop::GetFanPerformance(String^ jSONIN)
 		writer.Key("modelid"); writer.String(model);
 		writer.Key("airflowsupply"); writer.Double(port*3600.0);
 		writer.Key("airflowexhaust"); writer.Double(port * 3600.0);
-		writer.Key("coiltempdb");  writer.Double(0);
-		writer.Key("coiltempwb");  writer.Double(0);
+		writer.Key("coiltemppredb");  writer.Double(0);
+		writer.Key("coiltempprewb");  writer.Double(0);
 		writer.Key("coiltempposthdb");  writer.Double(0);
 		writer.Key("coiltempposthwb");  writer.Double(0);
 		writer.Key("coiltemppostcdb");  writer.Double(0);
@@ -1605,8 +1605,8 @@ String^ Rooftop::GetOptionsPressureDrop(String^ jSONIN)
 	CString model = doc["modelid"].GetString();
 	port[1] = doc["airflowexhaust"].GetDouble()/3600.0;
 	port[0] = doc["airflowsupply"].GetDouble()/3600.0;
-	double td1 = doc["coiltempdb"].GetDouble();
-	double tw1 = doc["coiltempwb"].GetDouble();
+	double td1 = doc["coiltemppredb"].GetDouble();
+	double tw1 = doc["coiltempprewb"].GetDouble();
 	double td2 = doc["coiltempposthdb"].GetDouble();
 	double tw2 = doc["coiltempposthwb"].GetDouble();
 	double td3 = doc["coiltemppostcdb"].GetDouble();
@@ -1660,91 +1660,95 @@ String^ Rooftop::GetOptionsPressureDrop(String^ jSONIN)
 			option.GetColumn("d", d);
 			option.GetColumn("e", e);
 			option.GetColumn("Type", tipo);
-			
-			//se type è > 0 si devono applicare delle formule diverse per il calcolo delle perdite di carico
-			if (tipo == 1)
+			double portata = port[j];
+			if (portata > 0)
 			{
-				double Nfiltri = 1;
-				std::string filter1 = "";
-				g_ModelTable.AddFilterField("Nomcomm", "=", model, filter1);
-				CGenTableRecord filtri = g_ModelTable.Lookup(filter1);
-				long n1 = 1, n2 = 0;
-				filtri.GetColumn("Filter_quantity", n1);
-				filtri.GetColumn("Filter_quantity2", n2);
-				if (n1 + n2 <= 0)
+				//se type è > 0 si devono applicare delle formule diverse per il calcolo delle perdite di carico
+				if (tipo == 1)
 				{
-					errorcode = 5;
-					n1 = 1;
-				}
-				port[j] /= (n1+n2);
-				
-			}
-			pdc = a * pow(port[j], 4) + b * pow(port[j], 3) + c * pow(port[j], 2) + d * port[j] + e;
-			pdc = Round(pdc, 1);
-			if (pdc <= 0)
-				errorcode = 2; 
-			if (pdc > 300)
-				errorcode = 3; 
+					double Nfiltri = 1;
+					std::string filter1 = "";
+					g_ModelTable.AddFilterField("Nomcomm", "=", model, filter1);
+					CGenTableRecord filtri = g_ModelTable.Lookup(filter1);
+					long n1 = 1, n2 = 0;
+					filtri.GetColumn("Filter_quantity", n1);
+					//filtri.GetColumn("Filter_quantity2", n2);
+					if (n1 <= 0)
+					{
+						errorcode = 5;
+						n1 = 1;
+					}
+					portata /= n1;
 
-			if (tipo == 5) //componenti interni che finiranno tutti sotto BAUN
-			{
-				baun += pdc;
-			}
-			CGas gas;
-			if (tipo == 2) //batteria calda preheating
-			{
-				double um = gas.ClUmRel(td1, tw1, 1.013);
-				double dens = gas.Densita(td1, um, 1.013);
-				double tmpDens = dens / 1.20433;
-				if (tmpDens <= 0)
-					errorcode = 6;
-				pdc = Round(pdc/ tmpDens, 1);
-			}
-			if (tipo == 4) //batteria fredda post heating (verifica estiva)
-			{
-				bool deumidificazione = 0;
-				if (deumidificazione)
+
+				}
+				pdc = a * pow(portata, 4) + b * pow(portata, 3) + c * pow(portata, 2) + d * portata + e;
+				pdc = Round(pdc, 1);
+				if (pdc <= 0)
+					errorcode = 2;
+				if (pdc > 300)
+					errorcode = 3;
+
+				if (tipo == 5) //componenti interni che finiranno tutti sotto BAUN
 				{
-					double um = gas.ClUmRel(td3, tw3, 1.013);
-					double dens = gas.Densita(td3, um, 1.013);
+					baun += pdc;
+				}
+				CGas gas;
+				if (tipo == 2) //batteria calda preheating
+				{
+					double um = gas.ClUmRel(td1, tw1, 1.013);
+					double dens = gas.Densita(td1, um, 1.013);
 					double tmpDens = dens / 1.20433;
 					if (tmpDens <= 0)
 						errorcode = 6;
 					pdc = Round(pdc / tmpDens, 1);
 				}
-				else
+				if (tipo == 4) //batteria fredda post heating (verifica estiva)
 				{
-					//cerco la calda post heating 
-					std::string filter1 = "";
-					g_CoeffPdc.AddFilterField("Nomcomm", "=", model, filter1);
-					g_CoeffPdc.AddFilterField("Flow_stream", "=", j, filter1);
-					g_CoeffPdc.AddFilterField("Type", "=", 3, filter1);
-					//ricerco il modello e mandato o ripresa e batteria
-					CGenTableRecord caldapost = g_CoeffPdc.Lookup(filter1);
-					caldapost.GetColumn("a", a);
-					caldapost.GetColumn("b", b);
-					caldapost.GetColumn("c", c);
-					caldapost.GetColumn("d", d);
-					caldapost.GetColumn("e", e);
+					bool deumidificazione = true;
+					if (deumidificazione)
+					{
+						double um = gas.ClUmRel(td3, tw3, 1.013);
+						double dens = gas.Densita(td3, um, 1.013);
+						double tmpDens = dens / 1.20433;
+						if (tmpDens <= 0)
+							errorcode = 6;
+						pdc = Round(pdc / tmpDens, 1);
+					}
+					else
+					{
+						//cerco la calda post heating 
+						std::string filter1 = "";
+						g_CoeffPdc.AddFilterField("Nomcomm", "=", model, filter1);
+						g_CoeffPdc.AddFilterField("Flow_stream", "=", j, filter1);
+						g_CoeffPdc.AddFilterField("Type", "=", 3, filter1);
+						//ricerco il modello e mandato o ripresa e batteria
+						CGenTableRecord caldapost = g_CoeffPdc.Lookup(filter1);
+						caldapost.GetColumn("a", a);
+						caldapost.GetColumn("b", b);
+						caldapost.GetColumn("c", c);
+						caldapost.GetColumn("d", d);
+						caldapost.GetColumn("e", e);
 
-					pdc = a * pow(port[j], 4) + b * pow(port[j], 3) + c * pow(port[j], 2) + d * port[j] + e;
-					pdc = Round(pdc, 1);
-					if (pdc <= 0)
-						errorcode = 2;
-					if (pdc > 300)
-						errorcode = 3;
-					tipo = 3;
+						pdc = a * pow(port[j], 4) + b * pow(port[j], 3) + c * pow(port[j], 2) + d * port[j] + e;
+						pdc = Round(pdc, 1);
+						if (pdc <= 0)
+							errorcode = 2;
+						if (pdc > 300)
+							errorcode = 3;
+						tipo = 3;
+					}
+
 				}
-
-			}
-			if (tipo == 3) //batteria calda post heating
-			{	
-				double um = gas.ClUmRel(td2, tw2, 1.013);
-				double dens = gas.Densita(td2, um, 1.013);
-				double tmpDens = dens / 1.20433;
-				if (tmpDens <= 0)
-					errorcode = 6;
-				pdc = Round(pdc / tmpDens, 1);
+				if (tipo == 3) //batteria calda post heating
+				{
+					double um = gas.ClUmRel(td2, tw2, 1.013);
+					double dens = gas.Densita(td2, um, 1.013);
+					double tmpDens = dens / 1.20433;
+					if (tmpDens <= 0)
+						errorcode = 6;
+					pdc = Round(pdc / tmpDens, 1);
+				}
 			}
 			if (tipo != 5)
 			{
