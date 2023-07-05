@@ -803,6 +803,8 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		String^ JSONmodelspecification = SearchModel(model,"",0, coiltype == 1 ? 10 : 11);
 		if (CString(JSONmodelspecification).IsEmpty())
 		{
+			CString err = "no result from db";
+			LogFile(err);
 			errorcode = 1;
 		}
 		std::string str1 = "";
@@ -811,10 +813,15 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		sigla = doc1["COIL"].GetString();
 	
 	}
-
+	
+	LogFile(sigla);
+	
 	if (sigla.IsEmpty())
+	{
+		CString err = "no coil model";
+		LogFile(err);
 		errorcode = 2;
-
+	}
 	double airflow = 0;
 	double airdb = 0;
 	double airwb = 0;
@@ -860,8 +867,11 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 
 	if (errorcode == 0)
 	{
-
+		CString err = "befor init leel";
+		LogFile(err);
 		leelcoilsDLL::Calculation calc;
+		err = "after init leel";
+		LogFile(err);
 		std::string output;
 		std::vector<std::string> single_result;
 		std::string strJSON;
@@ -952,7 +962,8 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		CString geo = "", surface = "";
 		short ranghi = 0, ntubi = 0, ncircuiti = 0, injections = 0;
 		double lencoil = 0, pal = 0;
-		
+		err = "before check coil model";
+		LogFile(err);
 		geo = findnextstringcoil(sigla,1).Trim();
 		surface = findnextstringcoil(sigla, 2).Trim();
 		ranghi = atoi(findnextstringcoil(sigla, 3));
@@ -961,7 +972,8 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		pal = atof(findnextstringcoil(sigla, 6)) / 100.0;
 		injections = atoi(findnextstringcoil(sigla, 7));
 		ncircuiti = atoi(findnextstringcoil(sigla, 8));
-
+		err = "after check coil model";
+		LogFile(err);
 		writer.Key("PARAM9"); writer.Int(-999999); // max fin height
 		writer.Key("PARAM26"); writer.Int(ntubi); // number tubes
 		writer.Key("PARAM57"); writer.Int(-999999); // fin height
@@ -1049,10 +1061,17 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		//strJSONCoil = "{""PARAM3"":1,""PARAM4"":true,""PARAM9"":-999999,""PARAM26"":84,""PARAM57"":-999999,""PARAM10"":900,""PARAM70"":0,""PARAM25"":6,""PARAM29"":2.12,""PARAM22"":1,""PARAM41"":1,""PARAM27"":31,""PARAM33"":""G"",""PARAM20"":""4S6"",""OP_01"":1,""OP_09"":2,""OP_03"":1,""OP_02"":1,""PARAM49"":7,""PARAM50"":-999999,""PARAM51"":-999999,""PARAM52"":0,""PARAM36"":42,""PARAM37"":-999999,""PARAM38"":-999999,""PARAM39"":30,""PARAM54"":18612,""PARAM46"":-999999,""PARAM34"":-999999,""PARAM97"":-999999,""PARAM99"":0,""PARAM43"":1,""PARAM89"":-999999,""PARAM90"":-999999,""PARAM91"":-999999,""PARAM92"":-999999,""PARAM93"":-999999,""PARAM40"":6.5,""PARAM45"":12.8,""PARAM55"":-999999,""PARAM47"":-999999,""PARAM95"":-999999,""PARAM87"":0}";
 		//CString temp = CString(strJSONCoil);
 		//::MessageBox(NULL, temp, _T(""), MB_OK);
-		leelcoilsDLL::Calculation^ calcLeel = gcnew leelcoilsDLL::Calculation();
-		  
+		err = "bef calc init";
+		LogFile(err);
+		leelcoilsDLL::Calculation^ calcLeel = gcnew leelcoilsDLL::Calculation(); 
+		err = "after calc init";
+		LogFile(err);
 
+		err = "before calc";
+		LogFile(err);
 		String^ error = calcLeel->StartCalculation(strJSONCoil)->Trim();
+		err = "after calc";
+		LogFile(err);
 
 		CString d = error;
 		//::MessageBox(NULL, d, _T(""), MB_OK);
@@ -1065,13 +1084,15 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		
 		if (error->IsNullOrEmpty(error))
 		{
+			err = "read res";
+			LogFile(err);
 			results = calcLeel->ReadResults();
 			if (results->Count > 0)
 			{
-				//DA TESTARE - al momento ho testato il calcolo con il json di input qui definito  nel progetto di esempio della dll e funziona.
 				result = results[0];
 				result1 = result->Replace("'", "\"");
-
+				
+				LogFile(result1);
 				std::string str = marshal_as<std::string>(result1);
 				Document res;
 				res.Parse(str.c_str());
@@ -1101,6 +1122,7 @@ String^ Rooftop::GetWaterCoilPerformance(String^ jSONIN)
 		}
 		else
 		{
+			LogFile(d);
 			if (d == "000")
 				errorcode = -999;
 			else
