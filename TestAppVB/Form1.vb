@@ -1,8 +1,21 @@
 ﻿Imports LennoxRooftop
+Imports System.Data.SqlClient
+Imports libxl
+Imports Newtonsoft.Json.Linq
+Imports Newtonsoft.Json
+
 'Imports leelcoilsDLL // da aggiungere nei riferimenti se si vuole provare direttamente da VB, modificare nome assembly in:ExampleExternal
 Public Class Form1
     Dim init As Boolean
     Dim rt As New LennoxRooftop.Rooftop()
+
+    Private conn As SqlConnection
+    Private cmd As SqlCommand
+    Private reader As SqlDataReader
+
+
+
+
 
     Private Sub Button2_Click(sender As Object, e As EventArgs) Handles Button2.Click
         Dim res As Long
@@ -104,5 +117,113 @@ Public Class Form1
 
     Private Sub Button6_Click(sender As Object, e As EventArgs) Handles Button6.Click
         TextBox1.Text = ""
+    End Sub
+
+
+    Private Sub WriteOutputToExcel(sheet As Sheet, row As Integer, col As Integer, modelid As String, airflow As Double, airpressuredp1 As Double, airpressuredp2 As Double)
+        sheet.writeStr(row, 0, modelid)
+        sheet.writeNum(row, 1, airflow)
+        sheet.writeNum(row, col, airpressuredp1)
+        sheet.writeNum(row, col + 1, airpressuredp2)
+    End Sub
+
+    Private Function GetAirPressureDP(output As String) As Double
+        Dim JResult As JObject = JsonConvert.DeserializeObject(output)
+        Dim OResult As JObject = JResult.SelectToken("result")
+        Dim err As Integer = OResult.SelectToken("errorid").Value(Of Integer)
+        If err = 0 Then
+            Dim OPerforance As JObject = OResult.SelectToken("performance")
+            Return OPerforance.SelectToken("airpressuredp").Value(Of Double)
+        End If
+        Return -err
+    End Function
+
+    Private Sub Button7_Click(sender As Object, e As EventArgs) Handles Button7.Click
+
+
+        If init Then
+            conn = New SqlConnection("Data Source=DESKTOP-20T4KFU;Initial Catalog=elencal;Persist Security Info=True;User ID=ctacom;Password=cta2005")
+            cmd = conn.CreateCommand
+            cmd.CommandText = "SELECT Nomcomm, indoor_fan_airflow_min , indoor_fan_airflow_max_STD FROM RT2_B6_altec_definition"
+            conn.Open()
+            reader = cmd.ExecuteReader()
+
+            Dim book As New BinBook()
+            book.setKey("fabio santoro", "windows-26262a0c06c7ef0467ba6d6aa3k4idk4")
+
+            Dim Sheet1 As Sheet
+            Sheet1 = book.addSheet("pre")
+            Dim Sheet2 As Sheet
+            Sheet2 = book.addSheet("post")
+
+
+            Dim nTest As Integer = 10
+            Dim row As Integer = 0
+            Dim airdpCol As Integer = 2
+            Dim airflow As Integer
+            Dim airflowInc As Double
+            Dim min As Double
+            Dim max As Double
+            Dim airPD1 As Double
+            Dim airPD2 As Double
+            Dim input As String
+            Dim output As String
+            Dim modelid As String
+            Dim filename As String = "AIR_PD_Calculation.xls"
+
+
+            If System.IO.File.Exists(filename) = True Then
+                IO.File.Delete(filename)
+            End If
+
+            Do While reader.Read()
+
+
+                modelid = reader.GetString(0)
+                min = reader.GetDouble(1)
+                max = reader.GetDouble(2)
+                airflowInc = (max - min) / nTest
+
+                If modelid = "B6027AH105DPF" Then
+                    modelid = modelid
+                End If
+
+                For i As Integer = 0 To nTest - 1
+
+                    airflow = min + (airflowInc * i)
+
+                    input = "{ ""configuration"":{ ""modelid"" : """ & modelid & """, ""supplierid"": 1 , ""coiltype"":1}, ""conditions"": { ""airflow"": " & airflow & ", ""airdb"":27, ""airwb"": 19, ""waterin"": 7, ""waterout"":12, ""waterflow"": -1, ""fluidtype"": 1, ""glycoletype"": 0, ""glycoleperc"": 0	}, ""iqngn"":1 } "
+                    output = rt.GetWaterCoilPerformance(input)
+                    airPD1 = GetAirPressureDP(output)
+
+                    input = "{ ""configuration"":{ ""modelid"" : """ & modelid & """, ""supplierid"": 1 , ""coiltype"":1}, ""conditions"": { ""airflow"": " & airflow & ", ""airdb"":-5, ""airwb"": -5, ""waterin"": 60, ""waterout"":40, ""waterflow"": -1, ""fluidtype"": 1, ""glycoletype"": 0, ""glycoleperc"": 0	}, ""iqngn"":1 } "
+                    output = rt.GetWaterCoilPerformance(input)
+                    airPD2 = GetAirPressureDP(output)
+                    WriteOutputToExcel(Sheet1, row, airdpCol, modelid, airflow, airPD1, airPD2)
+
+                    input = "{ ""configuration"":{ ""modelid"" : """ & modelid & """, ""supplierid"": 1 , ""coiltype"":2}, ""conditions"": { ""airflow"": " & airflow & ", ""airdb"":27, ""airwb"": 19, ""waterin"": 7, ""waterout"":12, ""waterflow"": -1, ""fluidtype"": 1, ""glycoletype"": 0, ""glycoleperc"": 0	}, ""iqngn"":1 } "
+                    output = rt.GetWaterCoilPerformance(input)
+                    airPD1 = GetAirPressureDP(output)
+
+                    input = "{ ""configuration"":{ ""modelid"" : """ & modelid & """, ""supplierid"": 1 , ""coiltype"":2}, ""conditions"": { ""airflow"": " & airflow & ", ""airdb"":-5, ""airwb"": -5, ""waterin"": 60, ""waterout"":40, ""waterflow"": -1, ""fluidtype"": 1, ""glycoletype"": 0, ""glycoleperc"": 0	}, ""iqngn"":1 } "
+                    output = rt.GetWaterCoilPerformance(input)
+                    airPD2 = GetAirPressureDP(output)
+
+                    WriteOutputToExcel(Sheet2, row, airdpCol, modelid, airflow, airPD1, airPD2)
+                    ProgressBar1.Increment(1)
+                    row += 1
+                Next
+            Loop
+
+            book.save(filename)
+            MsgBox("ok!")
+            ProgressBar1.Value = 0
+            reader.Close()
+            conn.Close()
+        End If
+    End Sub
+
+    Private Sub ProgressBar1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+
     End Sub
 End Class

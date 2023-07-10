@@ -1,9 +1,9 @@
-﻿<Global.Microsoft.VisualBasic.CompilerServices.DesignerGenerated()> _
+﻿<Global.Microsoft.VisualBasic.CompilerServices.DesignerGenerated()>
 Partial Class Form1
     Inherits System.Windows.Forms.Form
 
     'Form esegue l'override del metodo Dispose per pulire l'elenco dei componenti.
-    <System.Diagnostics.DebuggerNonUserCode()> _
+    <System.Diagnostics.DebuggerNonUserCode()>
     Protected Overrides Sub Dispose(ByVal disposing As Boolean)
         Try
             If disposing AndAlso components IsNot Nothing Then
@@ -20,7 +20,7 @@ Partial Class Form1
     'NOTA: la procedura che segue è richiesta da Progettazione Windows Form
     'Può essere modificata in Progettazione Windows Form.  
     'Non modificarla mediante l'editor del codice.
-    <System.Diagnostics.DebuggerStepThrough()> _
+    <System.Diagnostics.DebuggerStepThrough()>
     Private Sub InitializeComponent()
         Me.Button1 = New System.Windows.Forms.Button()
         Me.Button2 = New System.Windows.Forms.Button()
@@ -31,6 +31,8 @@ Partial Class Form1
         Me.TextBox2 = New System.Windows.Forms.TextBox()
         Me.Label1 = New System.Windows.Forms.Label()
         Me.Button6 = New System.Windows.Forms.Button()
+        Me.Button7 = New System.Windows.Forms.Button()
+        Me.ProgressBar1 = New System.Windows.Forms.ProgressBar()
         Me.SuspendLayout()
         '
         'Button1
@@ -71,7 +73,7 @@ Partial Class Form1
         '
         'Button5
         '
-        Me.Button5.Location = New System.Drawing.Point(506, 117)
+        Me.Button5.Location = New System.Drawing.Point(491, 117)
         Me.Button5.Name = "Button5"
         Me.Button5.Size = New System.Drawing.Size(146, 53)
         Me.Button5.TabIndex = 4
@@ -112,11 +114,37 @@ Partial Class Form1
         Me.Button6.Text = "Clear field"
         Me.Button6.UseVisualStyleBackColor = True
         '
+        'Button7
+        '
+        Me.Button7.Cursor = System.Windows.Forms.Cursors.WaitCursor
+        Me.Button7.Location = New System.Drawing.Point(643, 117)
+        Me.Button7.Name = "Button7"
+        Me.Button7.Size = New System.Drawing.Size(146, 53)
+        Me.Button7.TabIndex = 9
+        Me.Button7.Text = "AIR PD Calculation"
+        Me.Button7.UseVisualStyleBackColor = True
+        Me.Button7.UseWaitCursor = True
+        '
+        'ProgressBar1
+        '
+        Me.ProgressBar1.BackColor = System.Drawing.Color.IndianRed
+        Me.ProgressBar1.Cursor = System.Windows.Forms.Cursors.Arrow
+        Me.ProgressBar1.ForeColor = System.Drawing.SystemColors.HighlightText
+        Me.ProgressBar1.Location = New System.Drawing.Point(643, 91)
+        Me.ProgressBar1.Maximum = 270
+        Me.ProgressBar1.Name = "ProgressBar1"
+        Me.ProgressBar1.Size = New System.Drawing.Size(146, 20)
+        Me.ProgressBar1.Step = 1
+        Me.ProgressBar1.Style = System.Windows.Forms.ProgressBarStyle.Continuous
+        Me.ProgressBar1.TabIndex = 10
+        '
         'Form1
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
-        Me.ClientSize = New System.Drawing.Size(754, 727)
+        Me.ClientSize = New System.Drawing.Size(930, 727)
+        Me.Controls.Add(Me.ProgressBar1)
+        Me.Controls.Add(Me.Button7)
         Me.Controls.Add(Me.Button6)
         Me.Controls.Add(Me.Label1)
         Me.Controls.Add(Me.TextBox2)
@@ -142,4 +170,6 @@ Partial Class Form1
     Friend WithEvents TextBox2 As TextBox
     Friend WithEvents Label1 As Label
     Friend WithEvents Button6 As Button
+    Friend WithEvents Button7 As Button
+    Friend WithEvents ProgressBar1 As ProgressBar
 End Class
