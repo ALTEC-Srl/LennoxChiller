@@ -1,0 +1,8 @@
+[ODBC]
+DRIVER=SQL Server
+UID=ctacom
+DATABASE=elencal
+WSID=DESKTOP-5JI0FJ0
+APP=Microsoft Office
+SERVER=DESKTOP-20T4KFU
+Description=LennoxODBC
